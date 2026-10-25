@@ -1,0 +1,6 @@
+{
+  "name": "PeerDrop - WebRTC P2P File Transfer",
+  "description": "Send and receive files directly peer-to-peer using WebRTC DataChannel chunking, PeerJS, and live transfer analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

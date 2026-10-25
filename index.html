@@ -1,0 +1,3731 @@
+<!DOCTYPE html>
+<html lang="en" class="dark antialiased">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PeerDrop - WebRTC P2P File Transfer</title>
+  <meta name="description" content="Send and receive files directly peer-to-peer using WebRTC DataChannel chunking, PeerJS, and live transfer analytics." />
+  <meta property="og:title" content="PeerDrop - WebRTC P2P File Transfer" />
+  <meta property="og:description" content="Send and receive files directly peer-to-peer using WebRTC DataChannel chunking, PeerJS, and live transfer analytics." />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <link rel="icon" type="image/png" href="/assets/aistudio/image_cd5f8e64.png" />
+  <link rel="apple-touch-icon" href="/assets/aistudio/image_cd5f8e64.png" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            app: {
+              bg: '#08090d',
+              card: '#0f1118',
+              surface: '#141722',
+              border: '#1f2433',
+              borderHover: '#2e354b',
+              subtle: '#262c3e'
+            },
+            light: {
+              bg: '#f8fafc',
+              card: '#ffffff',
+              surface: '#f1f5f9',
+              border: '#e2e8f0',
+              borderHover: '#cbd5e1'
+            },
+            accent: {
+              emerald: '#10b981',
+              cyan: '#06b6d4',
+              blue: '#3b82f6',
+              amber: '#f59e0b',
+              rose: '#f43f5e'
+            }
+          },
+          fontFamily: {
+            sans: ["'Google Sans'", "'Google Sans Text'", '-apple-system', 'BlinkMacSystemFont', "'Segoe UI'", 'Roboto', 'sans-serif'],
+            heading: ["'Bungee Spice'", 'cursive', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace']
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Typography: Authentic Google Sans & Bungee Spice -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/mortezaom/google-sans-cdn@master/fonts.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bungee+Spice&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- PeerJS CDN -->
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <!-- QRCode.js CDN for mobile peer connection -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- JSZip CDN for bundling folders & multiple files into ZIP archives -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <style>
+    @import url('https://cdn.jsdelivr.net/gh/mortezaom/google-sans-cdn@master/fonts.css');
+    @import url('https://fonts.googleapis.com/css2?family=Bungee+Spice&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+    body, button, input, textarea, select, p, span, div, a, label, table, td, th {
+      font-family: 'Google Sans', 'Google Sans Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    h1, h2, h3, h4, h5, h6, .font-heading {
+      font-family: 'Bungee Spice', cursive, system-ui, sans-serif !important;
+      letter-spacing: 0.03em;
+      line-height: 1.25;
+    }
+
+    /* Preserve clear readability for monospace codes, labels, and pills */
+    .font-mono, code, pre, .font-mono * {
+      font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+    }
+
+    ::selection {
+      background-color: #3b82f6;
+      color: #ffffff;
+    }
+
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #2e354b;
+      border-radius: 4px;
+    }
+    .dark ::-webkit-scrollbar-thumb {
+      background: #1f2433;
+    }
+
+    .bg-mesh {
+      background-image: 
+        radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.08) 0%, transparent 65%),
+        linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+      background-size: 100% 100%, 32px 32px, 32px 32px;
+    }
+    html:not(.dark) .bg-mesh {
+      background-image: 
+        radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.05) 0%, transparent 65%),
+        linear-gradient(to right, rgba(0, 0, 0, 0.02) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0, 0, 0, 0.02) 1px, transparent 1px);
+      background-size: 100% 100%, 32px 32px, 32px 32px;
+    }
+
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.4); opacity: 0; }
+      100% { transform: scale(0.95); opacity: 0; }
+    }
+    .animate-pulse-ring {
+      animation: pulse-ring 2.4s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+    }
+
+    @keyframes live-beam {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    .shimmer-track {
+      background: linear-gradient(90deg, #3b82f6 0%, #06b6d4 50%, #3b82f6 100%);
+      background-size: 200% 100%;
+      animation: live-beam 2.5s infinite linear;
+    }
+
+    .corner-reticle {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-color: rgba(255, 255, 255, 0.25);
+      transition: border-color 0.2s ease;
+    }
+    html:not(.dark) .corner-reticle {
+      border-color: rgba(0, 0, 0, 0.2);
+    }
+    .group:hover .corner-reticle {
+      border-color: rgba(59, 130, 246, 0.8);
+    }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-app-bg text-slate-800 dark:text-zinc-100 min-h-screen font-sans bg-mesh flex flex-col justify-between selection:bg-blue-600 selection:text-white transition-colors duration-200">
+
+  <!-- COMMAND NAVIGATION BAR -->
+  <header class="border-b border-slate-200 dark:border-app-border/80 bg-white/95 dark:bg-app-bg/95 backdrop-blur-md sticky top-0 z-40 transition-colors">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+      
+      <!-- Brand & Mode Switcher -->
+      <div class="flex items-center gap-3 sm:gap-6">
+        <div class="flex items-center gap-2.5">
+          <!-- Real Logo Asset -->
+          <div class="relative group shrink-0">
+            <img src="/assets/aistudio/image_cd5f8e64.png" alt="PeerDrop Logo" class="w-8 h-8 rounded-lg object-contain shadow-md shadow-blue-500/25 border border-blue-500/30 transition-transform duration-200 group-hover:scale-105" />
+            <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-app-bg"></span>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-base font-bold tracking-wide uppercase font-heading">PeerDrop</span>
+              <span class="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-semibold">P2P Live</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mode Segmented Tabs -->
+        <nav class="flex items-center p-1 rounded-lg bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-xs">
+          <button id="navTabQuickShare" class="px-3 py-1 rounded-md font-medium text-xs transition flex items-center gap-1.5 bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 shadow-sm cursor-pointer">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+            <span>QuickShare (Code)</span>
+          </button>
+          <button id="navTabDirectMesh" class="px-3 py-1 rounded-md font-medium text-xs transition flex items-center gap-1.5 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 cursor-pointer">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+            </svg>
+            <span>Direct Mesh ID</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- Center Network Telemetry -->
+      <div class="hidden lg:flex items-center gap-2 px-3 py-1 rounded-md bg-slate-100 dark:bg-app-card border border-slate-200 dark:border-app-border text-xs">
+        <span class="text-slate-500 dark:text-zinc-500 font-mono text-[11px]">CHANNEL:</span>
+        <div class="flex items-center gap-1.5 font-mono text-[11px]">
+          <span id="meshProtocol">Direct WebRTC</span>
+          <span class="text-slate-400 dark:text-zinc-600">·</span>
+          <span class="text-slate-600 dark:text-zinc-400">64KB Chunked</span>
+        </div>
+      </div>
+
+      <!-- Right Controls: Device Name, Ping, Status, Sound, Help, Theme, 2nd Tab -->
+      <div class="flex items-center gap-2 sm:gap-2.5">
+
+        <!-- My Device Badge (Click to personalize) -->
+        <button id="myDeviceBadgeBtn" title="Click to rename this device" class="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 hover:border-blue-500/50 transition cursor-pointer">
+          <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+          <span id="myDeviceNameHeaderDisplay" class="font-sans text-[11px] font-medium truncate max-w-[110px]">My Device</span>
+          <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+          </svg>
+        </button>
+
+        <!-- Live Ping Latency -->
+        <div id="pingBadge" class="hidden items-center gap-1.5 px-2 py-1 rounded-md bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 font-mono text-xs text-slate-700 dark:text-zinc-300">
+          <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+          <span id="pingValue" class="text-[11px] tabular-nums">-- ms</span>
+        </div>
+
+        <!-- Connection State Badge -->
+        <div id="connectionStatusBadge" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-600 dark:text-zinc-400 transition-colors">
+          <span class="relative flex h-2 w-2">
+            <span id="statusIndicatorDotPulse" class="hidden absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-pulse-ring"></span>
+            <span id="statusIndicatorDot" class="relative inline-flex rounded-full h-2 w-2 bg-slate-400 dark:bg-zinc-500"></span>
+          </span>
+          <span id="statusIndicatorText" class="tracking-wide uppercase text-[10px] font-semibold">Disconnected</span>
+        </div>
+
+        <!-- Sound Feedback Toggle (🔔 / 🔕) -->
+        <button id="soundToggleBtn" title="Toggle audio feedback cues" class="p-1.5 rounded-md text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-800 border border-slate-200 dark:border-zinc-800 transition cursor-pointer">
+          <svg id="soundOnIcon" class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M11 5L6 9H2v6h4l5 4V5z" />
+          </svg>
+          <svg id="soundOffIcon" class="w-4 h-4 text-slate-400 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H2V9h3.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+          </svg>
+        </button>
+
+        <!-- Help / How It Works Button -->
+        <button id="guideModalBtn" title="How PeerDrop works & security overview" class="p-1.5 rounded-md text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-800 border border-slate-200 dark:border-zinc-800 transition cursor-pointer">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </button>
+
+        <!-- Theme Toggle (Light / Dark) -->
+        <button id="themeToggleBtn" title="Toggle Light / Dark theme" class="p-1.5 rounded-md text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-800 border border-slate-200 dark:border-zinc-800 transition cursor-pointer">
+          <svg id="moonIcon" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+          <svg id="sunIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+        </button>
+
+        <!-- Test in 2nd Tab Action -->
+        <button id="quickTestBtn" title="Open a second tab to test peer sharing on this device" class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-700 dark:text-zinc-300 bg-slate-100 dark:bg-zinc-900 hover:bg-slate-200 dark:hover:bg-zinc-800 border border-slate-200 dark:border-zinc-800 transition active:scale-[0.98] cursor-pointer">
+          <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+          </svg>
+          <span>Test 2nd Tab</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- MAIN WORKSPACE -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 w-full flex-1 space-y-5">
+
+    <!-- REAL-LIFE CAPABILITY & TRUST STRIP -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 text-xs">
+      <div class="flex items-center gap-2.5 p-2.5 sm:p-3 rounded-xl bg-white dark:bg-app-card border border-slate-200 dark:border-app-border shadow-xs">
+        <div class="w-7 h-7 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+        </div>
+        <div class="truncate">
+          <div class="font-medium text-slate-800 dark:text-zinc-200 text-xs font-heading">100% P2P Encrypted</div>
+          <div class="text-[11px] text-slate-500 dark:text-zinc-500 truncate">DTLS / SRTP DataChannel</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2.5 p-2.5 sm:p-3 rounded-xl bg-white dark:bg-app-card border border-slate-200 dark:border-app-border shadow-xs">
+        <div class="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+        </div>
+        <div class="truncate">
+          <div class="font-medium text-slate-800 dark:text-zinc-200 text-xs font-heading">Zero Cloud Storage</div>
+          <div class="text-[11px] text-slate-500 dark:text-zinc-500 truncate">Device-to-device memory stream</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2.5 p-2.5 sm:p-3 rounded-xl bg-white dark:bg-app-card border border-slate-200 dark:border-app-border shadow-xs">
+        <div class="w-7 h-7 rounded-lg bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        </div>
+        <div class="truncate">
+          <div class="font-medium text-slate-800 dark:text-zinc-200 text-xs font-heading">No File Size Limits</div>
+          <div class="text-[11px] text-slate-500 dark:text-zinc-500 truncate">64KB flow control buffering</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2.5 p-2.5 sm:p-3 rounded-xl bg-white dark:bg-app-card border border-slate-200 dark:border-app-border shadow-xs">
+        <div class="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+        </div>
+        <div class="truncate">
+          <div class="font-medium text-slate-800 dark:text-zinc-200 text-xs font-heading">Cross-Platform</div>
+          <div class="text-[11px] text-slate-500 dark:text-zinc-500 truncate">iOS, Android, Mac, PC, Linux</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- VIEW 1: QUICKSHARE (6-DIGIT CODE-BASED SHARING)           -->
+    <!-- ======================================================== -->
+    <div id="viewQuickShare" class="space-y-6">
+
+      <!-- QUICKSHARE CONNECTION GATEWAY (When Disconnected) -->
+      <section id="qsGatewaySection" class="bg-white dark:bg-app-card border border-slate-200 dark:border-app-border rounded-xl p-5 sm:p-6 shadow-sm transition-colors">
+        <div class="max-w-4xl mx-auto">
+          
+          <div class="text-center mb-6">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs font-semibold uppercase tracking-wider mb-2 border border-blue-500/20">
+              <span>Code-Based Device-to-Device Sharing</span>
+            </div>
+            <h2 class="text-2xl sm:text-3xl font-heading tracking-wide">QuickShare Engine</h2>
+            <p class="text-xs sm:text-sm text-slate-500 dark:text-zinc-400 mt-1 max-w-md mx-auto">
+              Share files, complete folders, and text securely between any two devices simply by using a temporary 6-digit connection code.
+            </p>
+          </div>
+
+          <!-- Dual Connection Deck: Send (Generate Code) vs Receive (Enter Code) -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+
+            <!-- CARD A: SENDER / HOST (GENERATE 6-DIGIT CODE) -->
+            <div class="p-5 rounded-xl bg-slate-50 dark:bg-app-bg border border-slate-200 dark:border-zinc-800 flex flex-col justify-between space-y-4">
+              <div>
+                <div class="flex items-center justify-between mb-3">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                    <h3 class="text-sm font-heading tracking-wide">Device A · Share With Code</h3>
+                  </div>
+                  <span id="qsCodeTimerBadge" class="text-[11px] font-mono text-slate-500 dark:text-zinc-400 flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5 text-amber-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span id="qsCountdownText">05:00</span>
+                  </span>
+                </div>
+                <p class="text-xs text-slate-500 dark:text-zinc-400 mb-4">
+                  Generate a temporary 6-digit code on this device and enter it on the receiving device to connect:
+                </p>
+
+                <!-- 6-Digit Code Display -->
+                <div class="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-center shadow-inner mb-3 relative group">
+                  <div class="text-[11px] uppercase font-mono text-slate-400 dark:text-zinc-500 mb-1">Your 6-Digit Connection Code</div>
+                  <div id="qsGeneratedCodeDisplay" class="font-mono text-3xl sm:text-4xl font-bold tracking-widest text-blue-600 dark:text-blue-400 select-all my-1 tabular-nums">
+                    ------
+                  </div>
+                  <p class="text-[11px] text-slate-500 dark:text-zinc-500 mt-1">Codes expire automatically after 5 minutes.</p>
+                  <!-- Quick QR Code badge button -->
+                  <button id="qsQuickQrIconBtn" title="Display QR Code for mobile instant pairing" class="absolute top-2.5 right-2.5 p-1.5 rounded-lg text-slate-400 hover:text-blue-600 dark:text-zinc-500 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-zinc-800 transition cursor-pointer" aria-label="Share via QR Code">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Sender Actions: Copy Code, Share via QR Code & Controls -->
+              <div class="space-y-2">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button id="qsCopyCodeBtn" class="py-2 px-3 rounded-lg bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-medium flex items-center justify-center gap-1.5 shadow-sm transition active:scale-[0.98] cursor-pointer">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                    </svg>
+                    <span id="qsCopyCodeBtnText">Copy 6-Digit Code</span>
+                  </button>
+                  <button id="qsShareQrBtn" title="Share via QR Code for mobile instant connect" class="py-2 px-3 rounded-lg bg-slate-200 dark:bg-zinc-800 hover:bg-slate-300 dark:hover:bg-zinc-700 active:bg-slate-400 dark:active:bg-zinc-900 text-slate-800 dark:text-zinc-200 border border-slate-300 dark:border-zinc-700 text-xs font-medium flex items-center justify-center gap-1.5 transition active:scale-[0.98] cursor-pointer shadow-sm">
+                    <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                    </svg>
+                    <span>Share via QR Code</span>
+                  </button>
+                </div>
+
+                <div class="flex items-center gap-2">
+                  <button id="qsTestTabWithCodeBtn" class="flex-1 py-1.5 px-3 rounded-lg bg-slate-100 dark:bg-zinc-900 hover:bg-slate-200 dark:hover:bg-zinc-800 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 text-xs font-mono transition border border-slate-200 dark:border-zinc-800 flex items-center justify-center gap-1.5 cursor-pointer">
+                    <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                    <span>1-Click Test: Open 2nd Tab with Code</span>
+                  </button>
+                  <button id="qsRegenerateCodeBtn" title="Regenerate new connection code" class="p-2 rounded-lg bg-slate-200 dark:bg-zinc-800 hover:bg-slate-300 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 border border-slate-300 dark:border-zinc-700 transition active:scale-[0.98] cursor-pointer">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- CARD B: RECEIVER (ENTER 6-DIGIT CODE) -->
+            <div class="p-5 rounded-xl bg-slate-50 dark:bg-app-bg border border-slate-200 dark:border-zinc-800 flex flex-col justify-between space-y-4">
+              <div>
+                <div class="flex items-center justify-between mb-3">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <h3 class="text-sm font-heading tracking-wide">Device B · Connect Using Code</h3>
+                  </div>
+                  <span class="text-[11px] font-mono text-slate-400 dark:text-zinc-500">Pairing Input</span>
+                </div>
+                <p class="text-xs text-slate-500 dark:text-zinc-400 mb-4">
+                  Enter the 6-digit code shown on the sending device to securely establish the WebRTC channel:
+                </p>
+
+                <!-- Six Separate Digit Boxes -->
+                <div class="mb-3">
+                  <div class="flex items-center justify-center gap-1.5 sm:gap-2.5" id="qsDigitContainer">
+                    <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]*" class="qs-digit w-10 h-13 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-mono font-bold rounded-xl bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 text-slate-900 dark:text-zinc-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition shadow-sm" data-idx="0" />
+                    <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]*" class="qs-digit w-10 h-13 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-mono font-bold rounded-xl bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 text-slate-900 dark:text-zinc-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition shadow-sm" data-idx="1" />
+                    <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]*" class="qs-digit w-10 h-13 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-mono font-bold rounded-xl bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 text-slate-900 dark:text-zinc-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition shadow-sm" data-idx="2" />
+                    <span class="text-slate-400 dark:text-zinc-600 font-bold px-0.5">·</span>
+                    <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]*" class="qs-digit w-10 h-13 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-mono font-bold rounded-xl bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 text-slate-900 dark:text-zinc-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition shadow-sm" data-idx="3" />
+                    <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]*" class="qs-digit w-10 h-13 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-mono font-bold rounded-xl bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 text-slate-900 dark:text-zinc-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition shadow-sm" data-idx="4" />
+                    <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]*" class="qs-digit w-10 h-13 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-mono font-bold rounded-xl bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 text-slate-900 dark:text-zinc-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition shadow-sm" data-idx="5" />
+                  </div>
+                  <p class="text-[11px] text-center text-slate-400 dark:text-zinc-500 mt-2 font-mono">Tip: You can paste any 6-digit code directly</p>
+                </div>
+
+                <!-- Brute-Force Rate Limiting Lockout Warning -->
+                <div id="qsLockoutAlert" class="hidden p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-mono text-center">
+                  Too many incorrect code attempts. Locked out for <span id="qsLockoutTimerText" class="font-bold">30s</span>.
+                </div>
+              </div>
+
+              <!-- Connect Button -->
+              <button id="qsConnectBtn" class="w-full py-2.5 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-xs font-medium flex items-center justify-center gap-2 shadow-sm transition active:scale-[0.98] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                <span id="qsConnectBtnText">Connect Device</span>
+              </button>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ACTIVE SESSION BAR (When Connected) -->
+      <section id="qsActiveSessionBar" class="hidden bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 shadow-sm transition-all">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div class="flex items-center gap-3 overflow-hidden">
+            <span class="relative flex h-3 w-3 shrink-0">
+              <span class="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-pulse-ring"></span>
+              <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+            </span>
+            <div class="truncate">
+              <div class="flex items-center gap-2">
+                <h3 class="text-base font-heading tracking-wide">Device Connected Successfully</h3>
+                <span class="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 font-semibold">P2P Live</span>
+              </div>
+              <p class="text-xs text-slate-600 dark:text-zinc-400 mt-0.5">
+                Peer: <strong id="qsConnectedDeviceName" class="text-slate-900 dark:text-zinc-200">Remote Device</strong> 
+                <span class="mx-1 text-slate-400 dark:text-zinc-600">·</span> 
+                Duration: <span id="qsSessionUptime" class="font-mono text-slate-600 dark:text-zinc-400 tabular-nums">00:00</span>
+              </p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 self-end sm:self-center">
+            <button id="qsDisconnectBtn" class="px-3 py-1.5 rounded-lg bg-rose-600/15 hover:bg-rose-600 text-rose-600 dark:text-rose-300 hover:text-white border border-rose-500/30 text-xs font-medium transition cursor-pointer">
+              Disconnect
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- QUICKSHARE SHARING STUDIO (TABS: FILES, FOLDERS, TEXT, HISTORY) -->
+      <section class="bg-white dark:bg-app-card border border-slate-200 dark:border-app-border rounded-xl p-5 shadow-sm transition-colors">
+        
+        <!-- Tab Navigation -->
+        <div class="flex items-center justify-between border-b border-slate-200 dark:border-zinc-800 pb-3 mb-5">
+          <div class="flex items-center gap-1 sm:gap-2">
+            <button id="qsTabFilesBtn" class="px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-500/30 font-semibold cursor-pointer">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              <span>Files</span>
+            </button>
+
+            <button id="qsTabFoldersBtn" class="px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 cursor-pointer">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+              </svg>
+              <span>Folders</span>
+            </button>
+
+            <button id="qsTabTextBtn" class="px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 cursor-pointer">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span>Text & Notes</span>
+            </button>
+
+            <button id="qsTabHistoryBtn" class="px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 cursor-pointer">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>Transfer History</span>
+            </button>
+          </div>
+
+          <span id="qsChannelReadyBadge" class="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-zinc-900 text-slate-500 dark:text-zinc-400 border border-slate-200 dark:border-zinc-800">
+            Awaiting Peer
+          </span>
+        </div>
+
+        <!-- TAB CONTENT 1: FILES SHARING -->
+        <div id="qsTabContentFiles" class="space-y-4">
+          <!-- Drop Area for Multiple Files -->
+          <div id="qsFilesDropzone" class="border border-slate-300 dark:border-zinc-800 hover:border-blue-500/70 dark:hover:border-blue-500/70 rounded-xl p-8 text-center transition-all bg-slate-50 dark:bg-app-bg hover:bg-slate-100/50 dark:hover:bg-app-surface/50 cursor-pointer group relative">
+            <input id="qsFilesInput" type="file" multiple class="hidden" />
+
+            <div class="w-12 h-12 mx-auto rounded-lg bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 group-hover:border-blue-500/40 text-slate-400 dark:text-zinc-400 group-hover:text-blue-500 flex items-center justify-center mb-3 transition shadow-sm">
+              <svg class="w-6 h-6 transition-transform group-hover:-translate-y-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+            </div>
+
+            <p class="text-sm font-medium text-slate-800 dark:text-zinc-200 mb-1">
+              Drag & Drop files here, or <span class="text-blue-600 dark:text-blue-400 underline decoration-blue-500/40">browse files</span>
+            </p>
+            <p class="text-xs text-slate-500 dark:text-zinc-500 max-w-sm mx-auto">
+              Photos, videos, PDFs, ZIPs, documents, and archives. Direct memory-chunked transfer.
+            </p>
+          </div>
+
+          <!-- Staged Files Queue for QuickShare -->
+          <div id="qsStagedFilesBox" class="hidden space-y-2.5 pt-2">
+            <div class="flex items-center justify-between text-xs text-slate-500 dark:text-zinc-400 px-0.5">
+              <div class="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider">
+                <span>Staged Files (<span id="qsStagedFilesCount">0</span>)</span>
+                <span class="text-zinc-400 dark:text-zinc-600">·</span>
+                <span id="qsStagedFilesSize" class="text-slate-700 dark:text-zinc-300">0 B</span>
+              </div>
+              <button id="qsClearStagedFilesBtn" class="text-slate-500 dark:text-zinc-500 hover:text-rose-500 text-xs transition cursor-pointer">Clear</button>
+            </div>
+
+            <div id="qsStagedFilesList" class="space-y-1.5 max-h-52 overflow-y-auto pr-1"></div>
+
+            <button id="qsSendFilesBtn" class="w-full mt-3 py-2.5 px-4 rounded-lg bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-medium text-xs flex items-center justify-center gap-2 shadow-sm transition active:scale-[0.98] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+              <span>Send Files to Connected Device</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- TAB CONTENT 2: FOLDERS SHARING -->
+        <div id="qsTabContentFolders" class="hidden space-y-4">
+          <div id="qsFoldersDropzone" class="border border-slate-300 dark:border-zinc-800 hover:border-cyan-500/70 dark:hover:border-cyan-500/70 rounded-xl p-8 text-center transition-all bg-slate-50 dark:bg-app-bg hover:bg-slate-100/50 dark:hover:bg-app-surface/50 cursor-pointer group relative">
+            <input id="qsFolderInput" type="file" webkitdirectory directory multiple class="hidden" />
+
+            <div class="w-12 h-12 mx-auto rounded-lg bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 group-hover:border-cyan-500/40 text-slate-400 dark:text-zinc-400 group-hover:text-cyan-500 flex items-center justify-center mb-3 transition shadow-sm">
+              <svg class="w-6 h-6 transition-transform group-hover:-translate-y-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+              </svg>
+            </div>
+
+            <p class="text-sm font-medium text-slate-800 dark:text-zinc-200 mb-1">
+              Drop an entire folder here, or <span class="text-cyan-600 dark:text-cyan-400 underline decoration-cyan-500/40">choose folder</span>
+            </p>
+            <p class="text-xs text-slate-500 dark:text-zinc-500 max-w-sm mx-auto">
+              Preserves nested subfolders and directory hierarchies. All files streamed individually.
+            </p>
+          </div>
+
+          <!-- Staged Folder Queue -->
+          <div id="qsStagedFolderBox" class="hidden space-y-2.5 pt-2">
+            <div class="flex items-center justify-between text-xs text-slate-500 dark:text-zinc-400 px-0.5">
+              <div class="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider">
+                <span>Staged Folder (<span id="qsStagedFolderFileCount">0</span> files)</span>
+                <span class="text-zinc-400 dark:text-zinc-600">·</span>
+                <span id="qsStagedFolderSize" class="text-slate-700 dark:text-zinc-300">0 B</span>
+              </div>
+              <button id="qsClearStagedFolderBtn" class="text-slate-500 dark:text-zinc-500 hover:text-rose-500 text-xs transition cursor-pointer">Clear</button>
+            </div>
+
+            <div id="qsStagedFolderList" class="space-y-1.5 max-h-52 overflow-y-auto pr-1"></div>
+
+            <button id="qsSendFolderBtn" class="w-full mt-3 py-2.5 px-4 rounded-lg bg-cyan-600 hover:bg-cyan-500 active:bg-cyan-700 text-white font-medium text-xs flex items-center justify-center gap-2 shadow-sm transition active:scale-[0.98] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+              <span>Send Folder to Connected Device</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- TAB CONTENT 3: TEXT & NOTES SHARING -->
+        <div id="qsTabContentText" class="hidden space-y-4">
+          <div class="space-y-2">
+            <div class="flex items-center justify-between text-xs text-slate-500 dark:text-zinc-400">
+              <span class="font-mono text-[11px] uppercase tracking-wider">Send Text, Code Snippets, or URLs</span>
+              <button id="qsPasteClipboardBtn" class="text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 text-xs cursor-pointer">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                <span>Paste from Clipboard</span>
+              </button>
+            </div>
+
+            <textarea id="qsTextInput" rows="6" placeholder="Type or paste plain text, code, notes, links, or messages to stream immediately to the connected device..." class="w-full p-3.5 rounded-xl bg-slate-50 dark:bg-app-bg border border-slate-300 dark:border-zinc-800 text-slate-900 dark:text-zinc-100 font-mono text-xs focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition resize-y"></textarea>
+
+            <div class="flex items-center justify-between text-[11px] font-mono text-slate-400 dark:text-zinc-500 px-1">
+              <span id="qsTextStats">0 characters · 0 words</span>
+              <span>Encrypted UTF-8 Stream</span>
+            </div>
+          </div>
+
+          <button id="qsSendTextBtn" class="w-full py-2.5 px-4 rounded-lg bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-medium text-xs flex items-center justify-center gap-2 shadow-sm transition active:scale-[0.98] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+            <span>Transmit Text Snippet</span>
+          </button>
+        </div>
+
+        <!-- TAB CONTENT 4: TRANSFER HISTORY (LOCAL LEDGER) -->
+        <div id="qsTabContentHistory" class="hidden space-y-4">
+          <div class="flex items-center justify-between text-xs text-slate-500 dark:text-zinc-400">
+            <span class="font-mono text-[11px] uppercase tracking-wider">Local Transfer Audit Log</span>
+            <button id="qsClearHistoryBtn" class="text-slate-500 dark:text-zinc-500 hover:text-rose-500 text-xs transition cursor-pointer">Clear History</button>
+          </div>
+
+          <div class="overflow-x-auto border border-slate-200 dark:border-zinc-800 rounded-lg">
+            <table class="w-full text-left text-xs text-slate-700 dark:text-zinc-300">
+              <thead class="bg-slate-100 dark:bg-app-bg text-slate-500 dark:text-zinc-500 border-b border-slate-200 dark:border-zinc-800 text-[11px] font-mono uppercase tracking-wider">
+                <tr>
+                  <th class="py-2.5 px-4 font-normal">Type</th>
+                  <th class="py-2.5 px-4 font-normal">Direction</th>
+                  <th class="py-2.5 px-4 font-normal">Item / Preview</th>
+                  <th class="py-2.5 px-4 font-normal">Size</th>
+                  <th class="py-2.5 px-4 font-normal">Time</th>
+                  <th class="py-2.5 px-4 font-normal">Status</th>
+                  <th class="py-2.5 px-4 font-normal text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody id="qsHistoryTableBody" class="divide-y divide-slate-200 dark:divide-zinc-800 font-mono text-xs">
+                <tr id="qsEmptyHistoryRow">
+                  <td colspan="7" class="py-8 text-center text-slate-400 dark:text-zinc-500 font-sans text-xs">
+                    No transfers logged yet in this session.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ACTIVE TELEMETRY DASHBOARD (PROGRESS & BATCH DOWNLOAD) -->
+      <section id="qsTelemetrySection" class="bg-white dark:bg-app-card border border-slate-200 dark:border-app-border rounded-xl p-5 shadow-sm space-y-4 transition-colors">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-cyan-500"></span>
+            <h3 class="text-sm font-heading tracking-wide">Live Transmission Telemetry</h3>
+          </div>
+          <span id="qsTelemetryStatusBadge" class="text-[11px] font-mono text-slate-400 dark:text-zinc-500 px-2 py-0.5 rounded bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800">
+            Idle
+          </span>
+        </div>
+
+        <!-- Telemetry Items Container -->
+        <div id="qsTelemetryList" class="space-y-3">
+          <div id="qsTelemetryEmptyMsg" class="py-10 text-center text-slate-400 dark:text-zinc-600 text-xs border border-dashed border-slate-200 dark:border-zinc-800 rounded-xl bg-slate-50 dark:bg-app-bg/50">
+            <svg class="w-7 h-7 mx-auto mb-2 text-slate-300 dark:text-zinc-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            <p class="font-mono text-[11px] text-slate-500 dark:text-zinc-400">DATA CHANNEL IDLE</p>
+            <p class="text-[11px] text-slate-400 dark:text-zinc-600 mt-1">Connect using a 6-digit code to stream files, folders, and text with real-time throughput metrics.</p>
+          </div>
+        </div>
+
+        <!-- Batch Download & Text Results Bar (Visible when files/text received) -->
+        <div id="qsReceivedResultsBar" class="hidden p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5">
+            <div class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-500 dark:text-emerald-400 flex items-center justify-center shrink-0">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div>
+              <p id="qsReceivedResultsTitle" class="text-xs font-semibold text-emerald-600 dark:text-emerald-300">Content Received Successfully</p>
+              <p id="qsReceivedResultsDesc" class="text-[11px] text-slate-600 dark:text-zinc-400 font-mono">Files are ready in memory.</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 self-end sm:self-center">
+            <button id="qsDownloadAllZipBtn" class="hidden px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition flex items-center gap-1.5 shadow-sm cursor-pointer">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              <span>Download All as ZIP</span>
+            </button>
+            <button id="qsCopyReceivedTextBtn" class="hidden px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition flex items-center gap-1.5 shadow-sm cursor-pointer">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              <span>Copy Received Text</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- VIEW 2: DIRECT MESH NODE (EXISTING PEERDROP WORKFLOW)     -->
+    <!-- ======================================================== -->
+    <div id="viewDirectMesh" class="hidden space-y-6">
+
+      <!-- 3-STEP VISUAL ONBOARDING & QUICK TEST BANNER -->
+      <div class="bg-gradient-to-r from-blue-950/30 via-zinc-900 to-zinc-900/60 border border-blue-500/25 rounded-xl p-4 sm:p-5 shadow-sm">
+        <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2">
+              <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold">i</span>
+              <h3 class="text-sm font-heading tracking-wide text-zinc-200">Direct Node ID Mesh Transfer</h3>
+            </div>
+            <p class="text-xs text-zinc-400">
+              Direct connection via persistent custom or random Peer IDs for advanced developers.
+            </p>
+          </div>
+          <button id="quickTestBannerBtn" class="shrink-0 px-3.5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-medium flex items-center gap-2 shadow-md shadow-blue-600/20 transition active:scale-[0.98] cursor-pointer">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+            <span>Open 2nd Tab with Direct ID</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- UNIFIED PEER NETWORK DOCK (Connection Architecture) -->
+      <section class="bg-white dark:bg-app-card border border-slate-200 dark:border-app-border rounded-xl p-5 shadow-sm transition-colors">
+        <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-6">
+
+          <!-- LOCAL NODE (YOUR IDENTITY) -->
+          <div class="flex-1 space-y-2">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                <span class="text-xs font-mono uppercase tracking-wider text-slate-700 dark:text-zinc-400 font-semibold">Local Node ID</span>
+              </div>
+              <button id="refreshIdBtn" title="Generate New Node ID" class="text-slate-400 dark:text-zinc-500 hover:text-slate-800 dark:hover:text-zinc-300 p-1 rounded hover:bg-slate-100 dark:hover:bg-zinc-800 transition text-xs cursor-pointer">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <div class="relative flex-1">
+                <input id="myPeerIdInput" type="text" readonly value="Binding WebRTC..." class="w-full bg-slate-50 dark:bg-app-bg text-blue-600 dark:text-blue-400 font-mono text-sm px-3.5 py-2 rounded-lg border border-slate-300 dark:border-app-border focus:outline-none select-all tracking-wide tabular-nums" />
+                <div id="idLoadingSpinner" class="absolute right-3 top-2.5 text-slate-400 dark:text-zinc-500">
+                  <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- 1-Click Copy -->
+              <button id="copyIdBtn" class="px-3 py-2 rounded-lg bg-slate-200 dark:bg-zinc-800 hover:bg-slate-300 dark:hover:bg-zinc-700 active:bg-slate-400 dark:active:bg-zinc-900 text-slate-800 dark:text-zinc-200 border border-slate-300 dark:border-zinc-700 text-xs font-medium flex items-center gap-1.5 transition active:scale-[0.98] cursor-pointer">
+                <svg id="copyIcon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                </svg>
+                <span id="copyBtnText">Copy</span>
+              </button>
+
+              <button id="copyShareLinkBtn" title="Copy Direct Peer Connection Link" class="p-2 rounded-lg bg-slate-200 dark:bg-zinc-800 hover:bg-slate-300 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-400 border border-slate-300 dark:border-zinc-700 transition cursor-pointer">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+              </button>
+
+              <button id="showQrBtn" title="Show QR Code" class="p-2 rounded-lg bg-slate-200 dark:bg-zinc-800 hover:bg-slate-300 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-400 border border-slate-300 dark:border-zinc-700 transition cursor-pointer">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- MESH BRIDGE CONNECTOR GLYPH -->
+          <div class="hidden lg:flex flex-col items-center justify-center px-4 self-center text-slate-300 dark:text-zinc-600">
+            <div class="w-px h-3 bg-slate-200 dark:bg-zinc-800"></div>
+            <div class="my-1 p-1 rounded bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800">
+              <svg class="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+              </svg>
+            </div>
+            <div class="w-px h-3 bg-slate-200 dark:bg-zinc-800"></div>
+          </div>
+
+          <!-- REMOTE PEER CONNECTION -->
+          <div class="flex-1 space-y-2">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span class="text-xs font-mono uppercase tracking-wider text-slate-700 dark:text-zinc-400 font-semibold">Remote Node ID</span>
+              </div>
+              <span id="peerStateLabel" class="text-xs font-mono text-slate-400 dark:text-zinc-500">Awaiting Target</span>
+            </div>
+
+            <div>
+              <div id="unconnectedInputRow" class="flex items-center gap-2">
+                <input id="remotePeerIdInput" type="text" placeholder="Enter target ID (e.g. pd-x8m2-k4p9)" class="flex-1 bg-slate-50 dark:bg-app-bg text-slate-900 dark:text-zinc-100 font-mono text-sm px-3.5 py-2 rounded-lg border border-slate-300 dark:border-app-border focus:border-blue-500 focus:outline-none placeholder:text-slate-400 dark:placeholder:text-zinc-600 tracking-wide" />
+                <button id="connectBtn" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-medium text-xs flex items-center gap-1.5 transition active:scale-[0.98] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  <span>Connect</span>
+                </button>
+              </div>
+
+              <!-- Connected Node Inspector Pill -->
+              <div id="connectedPeerBox" class="hidden">
+                <div class="flex items-center justify-between p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+                  <div class="flex items-center gap-2.5 overflow-hidden pl-1.5">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <div class="truncate">
+                      <span id="activePeerIdText" class="text-xs font-mono text-emerald-600 dark:text-emerald-300 font-semibold truncate">pd-xxxx-xxxx</span>
+                      <span class="text-[11px] font-mono text-slate-400 dark:text-zinc-500 ml-2">ESTABLISHED</span>
+                    </div>
+                  </div>
+                  <button id="disconnectBtn" class="px-2.5 py-1 rounded bg-slate-200 dark:bg-zinc-800 hover:bg-rose-600 hover:text-white text-slate-700 dark:text-zinc-400 border border-slate-300 dark:border-zinc-700 text-xs font-medium transition cursor-pointer">
+                    Disconnect
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- MESH DROPZONE & TELEMETRY SPLIT -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- TRANSMITTER & DROPZONE (6 Cols) -->
+        <section class="lg:col-span-6 bg-white dark:bg-app-card border border-slate-200 dark:border-app-border rounded-xl p-5 shadow-sm space-y-4 flex flex-col justify-between transition-colors">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-slate-400 dark:bg-zinc-400"></span>
+                <h2 class="text-sm font-heading tracking-wide">Mesh Ingestion</h2>
+              </div>
+              <span id="dropzoneReadyBadge" class="text-[11px] font-mono text-slate-500 dark:text-zinc-500 px-2 py-0.5 rounded bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800">
+                Standby
+              </span>
+            </div>
+
+            <!-- Drop Area -->
+            <div id="dropzone" class="border border-slate-300 dark:border-zinc-800 hover:border-slate-400 dark:hover:border-zinc-600 rounded-xl p-8 text-center transition-all bg-slate-50 dark:bg-app-bg hover:bg-slate-100/50 dark:hover:bg-app-surface/50 cursor-pointer group relative">
+              <input id="fileInput" type="file" webkitdirectory directory multiple class="hidden" />
+              <input id="singleFileInput" type="file" multiple class="hidden" />
+
+              <div class="w-12 h-12 mx-auto rounded-lg bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 group-hover:border-blue-500/40 text-slate-400 dark:text-zinc-400 group-hover:text-blue-500 flex items-center justify-center mb-3 transition shadow-sm">
+                <svg class="w-6 h-6 transition-transform group-hover:-translate-y-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                </svg>
+              </div>
+
+              <p class="text-sm font-medium text-slate-800 dark:text-zinc-200 mb-1">
+                Drop files or whole folders here, or
+              </p>
+              <div class="flex items-center justify-center gap-2 mt-2">
+                <button type="button" id="browseFilesBtn" class="px-3 py-1.5 rounded-md bg-slate-200 dark:bg-zinc-800 hover:bg-slate-300 dark:hover:bg-zinc-700 text-slate-800 dark:text-zinc-200 text-xs font-medium border border-slate-300 dark:border-zinc-700 transition flex items-center gap-1.5 cursor-pointer">
+                  <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  <span>Browse Files</span>
+                </button>
+                <button type="button" id="browseFolderBtn" class="px-3 py-1.5 rounded-md bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-300 text-xs font-medium border border-cyan-500/40 transition flex items-center gap-1.5 cursor-pointer">
+                  <svg class="w-3.5 h-3.5 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                  </svg>
+                  <span>Browse Folder</span>
+                </button>
+              </div>
+              <p class="text-[11px] text-slate-400 dark:text-zinc-500 max-w-xs mx-auto mt-2.5">
+                Supports individual files & complete directory hierarchies. 64KB chunk streaming.
+              </p>
+            </div>
+
+            <!-- Staged Queue List -->
+            <div id="stagedFilesContainer" class="hidden mt-4 space-y-2.5">
+              <div class="flex items-center justify-between text-xs text-slate-500 dark:text-zinc-400 px-0.5">
+                <div class="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider">
+                  <span>Payload Queue (<span id="stagedCount">0</span>)</span>
+                  <span class="text-zinc-400 dark:text-zinc-600">·</span>
+                  <span id="stagedTotalSize" class="text-slate-700 dark:text-zinc-300">0 B</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] text-slate-400 dark:text-zinc-500 hidden sm:inline font-mono">Drag to reorder sequence</span>
+                  <button id="clearStagedBtn" class="text-slate-400 dark:text-zinc-500 hover:text-rose-500 text-xs transition cursor-pointer">Clear</button>
+                </div>
+              </div>
+
+              <div id="stagedFilesList" class="space-y-1.5 max-h-52 overflow-y-auto pr-1"></div>
+
+              <!-- Standby Warning when files staged but not connected -->
+              <div id="transferReadyWarning" class="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs font-mono text-amber-600 dark:text-amber-300 flex items-center justify-between gap-2">
+                <span class="flex items-center gap-1.5 text-[11px]">
+                  <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                  Connect to a remote node above to enable transmission
+                </span>
+                <button type="button" onclick="document.getElementById('quickTestBtn').click()" class="text-blue-600 dark:text-blue-400 hover:underline font-sans text-xs shrink-0 cursor-pointer">
+                  Open 2nd Tab
+                </button>
+              </div>
+
+              <button id="startTransferBtn" class="w-full mt-3 py-2.5 px-4 rounded-lg bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-medium text-xs flex items-center justify-center gap-2 shadow-sm transition active:scale-[0.98] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+                <span>Transmit Staged Payload</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="pt-4 border-t border-slate-200 dark:border-app-border text-[11px] font-mono text-slate-400 dark:text-zinc-500 flex items-center justify-between">
+            <span>Flow Control: Backpressure 1MB</span>
+            <span>Zero Server Storage</span>
+          </div>
+        </section>
+
+        <!-- TELEMETRY & LIVE TRANSFER PROGRESS (6 Cols) -->
+        <section id="transferProgressSection" class="lg:col-span-6 bg-white dark:bg-app-card border border-slate-200 dark:border-app-border rounded-xl p-5 shadow-sm space-y-4 flex flex-col justify-between transition-colors">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-cyan-500"></span>
+                <h2 class="text-sm font-heading tracking-wide">Mesh Telemetry</h2>
+              </div>
+              <span id="activeTransfersCount" class="text-[11px] font-mono text-slate-400 dark:text-zinc-500 px-2 py-0.5 rounded bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800">
+                Idle
+              </span>
+            </div>
+
+            <!-- Dynamic Active Transfers Container -->
+            <div id="activeTransfersList" class="space-y-3">
+              <div id="noActiveTransfersMsg" class="py-12 px-4 text-center text-slate-400 dark:text-zinc-500 text-xs border border-slate-200 dark:border-zinc-800/80 rounded-xl bg-slate-50 dark:bg-app-bg/50">
+                <svg class="w-7 h-7 mx-auto mb-2 text-slate-300 dark:text-zinc-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <p class="font-mono text-[11px] text-slate-500 dark:text-zinc-400">DATA CHANNEL READY</p>
+                <p class="text-[11px] text-slate-400 dark:text-zinc-600 mt-1">Connect nodes and drop files to monitor real-time throughput metrics.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-4 border-t border-slate-200 dark:border-app-border text-[11px] font-mono text-slate-400 dark:text-zinc-500 flex items-center justify-between">
+            <span>MTU / Chunk: 65,536 B</span>
+            <span>Direct Memory Streaming</span>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- SESSION AUDIT LOG / TRANSFER HISTORY (FULL WIDTH) -->
+      <section class="bg-white dark:bg-app-card border border-slate-200 dark:border-app-border rounded-xl p-5 shadow-sm space-y-4 transition-colors">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <h2 class="text-sm font-heading tracking-wide">Mesh Session Ledger</h2>
+            <span id="historyCountBadge" class="text-[11px] font-mono text-slate-400 dark:text-zinc-500">· 0 records</span>
+          </div>
+          <button id="clearHistoryBtn" class="text-xs text-slate-400 dark:text-zinc-500 hover:text-rose-500 px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-zinc-800 transition cursor-pointer">
+            Clear Ledger
+          </button>
+        </div>
+
+        <div class="overflow-x-auto border border-slate-200 dark:border-zinc-800/80 rounded-lg">
+          <table class="w-full text-left text-xs text-slate-700 dark:text-zinc-300">
+            <thead class="bg-slate-50 dark:bg-app-bg text-slate-500 dark:text-zinc-500 border-b border-slate-200 dark:border-zinc-800 text-[11px] font-mono uppercase tracking-wider">
+              <tr>
+                <th class="py-2.5 px-4 font-normal">Vector</th>
+                <th class="py-2.5 px-4 font-normal">Asset Name</th>
+                <th class="py-2.5 px-4 font-normal">Size</th>
+                <th class="py-2.5 px-4 font-normal">Completed</th>
+                <th class="py-2.5 px-4 font-normal">Status</th>
+                <th class="py-2.5 px-4 font-normal text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="historyTableBody" class="divide-y divide-slate-200 dark:divide-zinc-800/60 font-mono text-xs">
+              <tr id="emptyHistoryRow">
+                <td colspan="6" class="py-8 text-center text-slate-400 dark:text-zinc-600 font-sans text-xs">
+                  No transfer records in current session.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </div>
+
+  </main>
+
+  <!-- REFINED FOOTER -->
+  <footer class="border-t border-slate-200 dark:border-app-border/60 py-5 bg-white dark:bg-app-bg text-xs text-slate-500 dark:text-zinc-500 transition-colors">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px]">
+      <div class="flex items-center gap-2.5 text-slate-600 dark:text-zinc-400">
+        <img src="/assets/aistudio/image_cd5f8e64.png" alt="PeerDrop" class="w-5 h-5 rounded-md object-contain" />
+        <span class="font-bold text-slate-800 dark:text-zinc-200 font-heading tracking-wide">PeerDrop</span>
+        <span>·</span>
+        <span>Direct Peer-to-Peer WebRTC Transmission Engine</span>
+      </div>
+      <div class="flex items-center gap-4 font-mono text-slate-400 dark:text-zinc-500 text-[10px]">
+        <span>6-Digit Pairing</span>
+        <span>·</span>
+        <span>64 KB Chunk Streaming</span>
+        <span>·</span>
+        <span>Zero Cloud Retention</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- RECEIVER CONSENT MODAL (Accept / Decline Transfer) -->
+  <div id="qsConsentModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm hidden p-4">
+    <div class="bg-white dark:bg-app-card border border-slate-200 dark:border-app-border rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+      <div class="flex items-start gap-3">
+        <div class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-zinc-800 p-1 flex items-center justify-center shrink-0 border border-slate-200 dark:border-zinc-700 shadow-sm">
+          <img src="/assets/aistudio/image_cd5f8e64.png" alt="PeerDrop" class="w-8 h-8 rounded-lg object-contain" />
+        </div>
+        <div class="flex-1">
+          <h3 class="text-base font-heading tracking-wide">Incoming QuickShare Request</h3>
+          <p class="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
+            <strong id="qsConsentSenderName" class="text-slate-800 dark:text-zinc-200">Device</strong> wants to share content with you.
+          </p>
+        </div>
+      </div>
+
+      <!-- Content Preview Box -->
+      <div class="p-3.5 rounded-xl bg-slate-50 dark:bg-app-bg border border-slate-200 dark:border-zinc-800 space-y-2">
+        <div class="flex items-center justify-between text-xs font-mono">
+          <span id="qsConsentContentType" class="font-semibold text-blue-600 dark:text-blue-400 uppercase text-[11px]">3 Files</span>
+          <span id="qsConsentTotalSize" class="text-slate-500 dark:text-zinc-400">14.2 MB</span>
+        </div>
+        <div id="qsConsentItemsList" class="space-y-1 max-h-36 overflow-y-auto text-xs text-slate-700 dark:text-zinc-300 pr-1"></div>
+      </div>
+
+      <p class="text-[11px] text-slate-400 dark:text-zinc-500">
+        PeerDrop streams this content directly into your browser memory. No server copies are retained.
+      </p>
+
+      <!-- Action Buttons: Accept / Decline -->
+      <div class="flex items-center gap-2 pt-1">
+        <button id="qsConsentDeclineBtn" class="flex-1 py-2 px-3 rounded-lg bg-slate-100 dark:bg-zinc-800 hover:bg-rose-500/10 hover:text-rose-500 text-slate-700 dark:text-zinc-300 text-xs font-medium border border-slate-200 dark:border-zinc-700 transition cursor-pointer">
+          Decline
+        </button>
+        <button id="qsConsentAcceptBtn" class="flex-1 py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition shadow-md shadow-emerald-600/20 cursor-pointer">
+          Accept & Download
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- QR CODE MODAL -->
+  <div id="qrModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm hidden p-4">
+    <div class="bg-white dark:bg-app-card border border-slate-200 dark:border-app-border rounded-2xl p-6 max-w-sm w-full text-center relative shadow-2xl space-y-4">
+      <button id="closeQrBtn" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-white p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 transition cursor-pointer" aria-label="Close modal">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+
+      <div class="flex flex-col items-center justify-center">
+        <div class="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 p-1 flex items-center justify-center mb-1.5 shadow-sm">
+          <img src="/assets/aistudio/image_cd5f8e64.png" alt="PeerDrop" class="w-7 h-7 rounded-lg object-contain" />
+        </div>
+        <h3 id="qrModalTitle" class="text-base font-heading tracking-wide uppercase">QuickShare QR Code</h3>
+        <p id="qrModalSubtitle" class="text-xs text-slate-500 dark:text-zinc-400">Scan with your mobile camera to connect instantly</p>
+      </div>
+
+      <!-- QR Code Canvas / Container -->
+      <div class="flex items-center justify-center">
+        <div class="bg-white p-3.5 rounded-xl shadow-inner border border-slate-200 dark:border-zinc-700/60 inline-flex items-center justify-center min-w-[210px] min-h-[210px]" id="qrCodeContainer"></div>
+      </div>
+
+      <!-- QuickShare Code Callout Pill (Shown for QuickShare mode) -->
+      <div id="qrModalCodePill" class="hidden p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-500/20 text-center">
+        <div class="text-[10px] uppercase font-mono text-slate-500 dark:text-zinc-400 font-medium mb-0.5">QuickShare Connection Code</div>
+        <div id="qrModalCodeValue" class="text-2xl font-mono font-bold tracking-widest text-blue-600 dark:text-blue-400 select-all tabular-nums">------</div>
+        <div id="qrModalTimerNotice" class="text-[10px] font-mono text-slate-400 dark:text-zinc-500 mt-0.5">Expires in 05:00</div>
+      </div>
+
+      <div class="bg-slate-50 dark:bg-app-bg p-2.5 rounded-lg border border-slate-200 dark:border-zinc-800 text-[11px] font-mono text-slate-600 dark:text-zinc-400 truncate select-all" id="qrLinkText">
+        https://...
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button id="copyQrLinkBtn" class="flex-1 py-2 px-3 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-medium rounded-lg transition active:scale-[0.98] cursor-pointer flex items-center justify-center gap-1.5 shadow-sm">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+          </svg>
+          <span id="copyQrLinkBtnText">Copy Link</span>
+        </button>
+        <button id="closeQrBottomBtn" class="px-4 py-2 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 text-xs font-medium rounded-lg transition active:scale-[0.98] cursor-pointer">
+          Dismiss
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DEVICE RENAME MODAL -->
+  <div id="deviceRenameModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm hidden p-4">
+    <div class="bg-white dark:bg-app-card border border-slate-200 dark:border-app-border rounded-2xl p-6 max-w-sm w-full shadow-2xl space-y-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+          <img src="/assets/aistudio/image_cd5f8e64.png" alt="PeerDrop" class="w-7 h-7 rounded-md object-contain" />
+        </div>
+        <div>
+          <h3 class="text-sm font-heading tracking-wide">Rename This Device</h3>
+          <p class="text-xs text-slate-500 dark:text-zinc-400">Connected peers will see this friendly name</p>
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-mono text-slate-500 dark:text-zinc-400 mb-1">Display Name</label>
+        <input id="deviceNameCustomInput" type="text" maxlength="32" placeholder="e.g. Swarnayu's MacBook Pro" class="w-full px-3.5 py-2 rounded-lg bg-slate-50 dark:bg-app-bg border border-slate-300 dark:border-zinc-700 text-slate-900 dark:text-zinc-100 text-sm focus:border-blue-500 focus:outline-none" />
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="cancelDeviceRenameBtn" class="flex-1 py-2 px-3 rounded-lg bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 text-xs font-medium transition cursor-pointer">Cancel</button>
+        <button id="saveDeviceRenameBtn" class="flex-1 py-2 px-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition cursor-pointer shadow-sm">Save Name</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOW IT WORKS & SECURITY MODAL -->
+  <div id="guideModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm hidden p-4">
+    <div class="bg-white dark:bg-app-card border border-slate-200 dark:border-app-border rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-zinc-800">
+        <div class="flex items-center gap-2.5">
+          <img src="/assets/aistudio/image_cd5f8e64.png" alt="PeerDrop" class="w-7 h-7 rounded-lg object-contain" />
+          <h3 class="text-base font-heading tracking-wide">How PeerDrop Works</h3>
+        </div>
+        <button id="closeGuideModalBtn" class="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer" aria-label="Close guide">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="space-y-3 text-xs text-slate-600 dark:text-zinc-300">
+        <div class="p-3 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-500/20">
+          <div class="font-bold text-slate-900 dark:text-zinc-100 mb-1 flex items-center gap-1.5 font-heading text-xs">
+            <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+            1. Pure Peer-to-Peer Architecture
+          </div>
+          <p class="text-[11px] leading-relaxed">Unlike cloud storage services, files transferred via PeerDrop never upload to a cloud server or disk. Data is streamed in-flight directly from device RAM to device RAM over encrypted WebRTC DataChannels.</p>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-50 dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800">
+          <div class="font-bold text-slate-900 dark:text-zinc-100 mb-1 flex items-center gap-1.5 font-heading text-xs">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            2. End-to-End Cryptography
+          </div>
+          <p class="text-[11px] leading-relaxed">All payloads are encrypted with standard DTLS (Datagram Transport Layer Security) and SRTP. Neither third parties nor intermediaries can intercept or tamper with your files.</p>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-50 dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800">
+          <div class="font-bold text-slate-900 dark:text-zinc-100 mb-1 flex items-center gap-1.5 font-heading text-xs">
+            <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+            3. Flow-Controlled 64KB Chunking
+          </div>
+          <p class="text-[11px] leading-relaxed">Large video files, high-res photos, and deep nested folders are segmented into 64KB chunks with backpressure monitoring (`bufferedAmountLow`) to avoid browser crashes or buffer bloat.</p>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-50 dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800">
+          <div class="font-bold text-slate-900 dark:text-zinc-100 mb-1 flex items-center gap-1.5 font-heading text-xs">
+            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+            4. Local Wi-Fi Speed
+          </div>
+          <p class="text-[11px] leading-relaxed">When two devices are connected on the same local Wi-Fi or LAN network, transfers bypass the public internet entirely, transferring at full local wire speeds.</p>
+        </div>
+      </div>
+      <button id="closeGuideModalBottomBtn" class="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition cursor-pointer shadow-sm">
+        Understood, Close Guide
+      </button>
+    </div>
+  </div>
+
+  <!-- FULL SCREEN DRAG & DROP OVERLAY (AirDrop Style) -->
+  <div id="fullWindowDropOverlay" class="fixed inset-0 z-50 bg-blue-900/90 dark:bg-blue-950/95 backdrop-blur-md flex flex-col items-center justify-center text-white hidden border-4 border-dashed border-blue-400/80 p-6 pointer-events-none transition-all">
+    <div class="w-20 h-20 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center mb-4 shadow-2xl animate-pulse">
+      <img src="/assets/aistudio/image_cd5f8e64.png" alt="PeerDrop" class="w-12 h-12 rounded-xl object-contain shadow-lg" />
+    </div>
+    <h3 class="text-2xl font-heading tracking-wide mb-1">Drop Files or Folders Anywhere</h3>
+    <p class="text-xs font-sans text-blue-100 max-w-sm text-center">Release to stage files immediately for secure device transmission.</p>
+  </div>
+
+  <!-- FLOATING TOAST NOTIFICATION CONTAINER -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"></div>
+
+  <!-- APPLICATION ENGINE SCRIPT -->
+  <script>
+    // ==========================================
+    // PROTOCOL CONSTANTS & SYSTEM STATE
+    // ==========================================
+    const CHUNK_SIZE = 64 * 1024; // 64 KB array buffers
+    const MAX_BUFFERED_AMOUNT = 1024 * 1024; // 1 MB backpressure ceiling
+
+    let currentMode = 'quickshare'; // 'quickshare' | 'directmesh'
+    let peer = null;
+    let myPeerId = null;
+    let activeConnection = null;
+    let pingInterval = null;
+    let lastPingTime = 0;
+
+    // QuickShare specific state
+    let qsCode = null;
+    let qsCodeExpiresAt = null;
+    let qsCodeTimer = null;
+    let qsFailedAttempts = 0;
+    let qsLockoutTimer = null;
+    let qsSessionStartTime = null;
+    let qsSessionTimer = null;
+    let qsRemoteDeviceName = 'Remote Device';
+    let qsPendingConsentReq = null;
+    let qsLastReceivedBatch = []; // [{name, blob}] for ZIP download
+    let qsLastReceivedText = '';
+
+    // Staged queues
+    let stagedFiles = []; // For direct mesh
+    let qsStagedFiles = []; // For QuickShare files
+    let qsStagedFolderFiles = []; // For QuickShare folder
+
+    const activeTransfers = new Map();
+    const transferHistory = []; // Session history
+
+    // STUN config for NAT traversal
+    const iceConfig = {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:global.stun.twilio.com:3478' }
+      ]
+    };
+
+    // ==========================================
+    // DOM REFERENCES
+    // ==========================================
+    // Navigation & Views
+    const navTabQuickShare = document.getElementById('navTabQuickShare');
+    const navTabDirectMesh = document.getElementById('navTabDirectMesh');
+    const viewQuickShare = document.getElementById('viewQuickShare');
+    const viewDirectMesh = document.getElementById('viewDirectMesh');
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    const sunIcon = document.getElementById('sunIcon');
+    const moonIcon = document.getElementById('moonIcon');
+
+    // Header Indicators
+    const connectionStatusBadge = document.getElementById('connectionStatusBadge');
+    const statusIndicatorDot = document.getElementById('statusIndicatorDot');
+    const statusIndicatorDotPulse = document.getElementById('statusIndicatorDotPulse');
+    const statusIndicatorText = document.getElementById('statusIndicatorText');
+    const pingBadge = document.getElementById('pingBadge');
+    const pingValue = document.getElementById('pingValue');
+    const quickTestBtn = document.getElementById('quickTestBtn');
+
+    // QuickShare Gateway Elements
+    const qsGatewaySection = document.getElementById('qsGatewaySection');
+    const qsActiveSessionBar = document.getElementById('qsActiveSessionBar');
+    const qsConnectedDeviceName = document.getElementById('qsConnectedDeviceName');
+    const qsSessionUptime = document.getElementById('qsSessionUptime');
+    const qsDisconnectBtn = document.getElementById('qsDisconnectBtn');
+
+    const qsGeneratedCodeDisplay = document.getElementById('qsGeneratedCodeDisplay');
+    const qsCountdownText = document.getElementById('qsCountdownText');
+    const qsCopyCodeBtn = document.getElementById('qsCopyCodeBtn');
+    const qsCopyCodeBtnText = document.getElementById('qsCopyCodeBtnText');
+    const qsShareQrBtn = document.getElementById('qsShareQrBtn');
+    const qsQuickQrIconBtn = document.getElementById('qsQuickQrIconBtn');
+    const qsRegenerateCodeBtn = document.getElementById('qsRegenerateCodeBtn');
+    const qsTestTabWithCodeBtn = document.getElementById('qsTestTabWithCodeBtn');
+
+    const qsDigitInputs = Array.from(document.querySelectorAll('.qs-digit'));
+    const qsConnectBtn = document.getElementById('qsConnectBtn');
+    const qsConnectBtnText = document.getElementById('qsConnectBtnText');
+    const qsLockoutAlert = document.getElementById('qsLockoutAlert');
+    const qsLockoutTimerText = document.getElementById('qsLockoutTimerText');
+
+    // QuickShare Studio Tabs
+    const qsTabFilesBtn = document.getElementById('qsTabFilesBtn');
+    const qsTabFoldersBtn = document.getElementById('qsTabFoldersBtn');
+    const qsTabTextBtn = document.getElementById('qsTabTextBtn');
+    const qsTabHistoryBtn = document.getElementById('qsTabHistoryBtn');
+    const qsTabContentFiles = document.getElementById('qsTabContentFiles');
+    const qsTabContentFolders = document.getElementById('qsTabContentFolders');
+    const qsTabContentText = document.getElementById('qsTabContentText');
+    const qsTabContentHistory = document.getElementById('qsTabContentHistory');
+    const qsChannelReadyBadge = document.getElementById('qsChannelReadyBadge');
+
+    // Files Tab
+    const qsFilesDropzone = document.getElementById('qsFilesDropzone');
+    const qsFilesInput = document.getElementById('qsFilesInput');
+    const qsStagedFilesBox = document.getElementById('qsStagedFilesBox');
+    const qsStagedFilesList = document.getElementById('qsStagedFilesList');
+    const qsStagedFilesCount = document.getElementById('qsStagedFilesCount');
+    const qsStagedFilesSize = document.getElementById('qsStagedFilesSize');
+    const qsClearStagedFilesBtn = document.getElementById('qsClearStagedFilesBtn');
+    const qsSendFilesBtn = document.getElementById('qsSendFilesBtn');
+
+    // Folders Tab
+    const qsFoldersDropzone = document.getElementById('qsFoldersDropzone');
+    const qsFolderInput = document.getElementById('qsFolderInput');
+    const qsStagedFolderBox = document.getElementById('qsStagedFolderBox');
+    const qsStagedFolderList = document.getElementById('qsStagedFolderList');
+    const qsStagedFolderFileCount = document.getElementById('qsStagedFolderFileCount');
+    const qsStagedFolderSize = document.getElementById('qsStagedFolderSize');
+    const qsClearStagedFolderBtn = document.getElementById('qsClearStagedFolderBtn');
+    const qsSendFolderBtn = document.getElementById('qsSendFolderBtn');
+
+    // Text Tab
+    const qsTextInput = document.getElementById('qsTextInput');
+    const qsTextStats = document.getElementById('qsTextStats');
+    const qsPasteClipboardBtn = document.getElementById('qsPasteClipboardBtn');
+    const qsSendTextBtn = document.getElementById('qsSendTextBtn');
+
+    // History & Telemetry Tab
+    const qsHistoryTableBody = document.getElementById('qsHistoryTableBody');
+    const qsEmptyHistoryRow = document.getElementById('qsEmptyHistoryRow');
+    const qsClearHistoryBtn = document.getElementById('qsClearHistoryBtn');
+
+    const qsTelemetrySection = document.getElementById('qsTelemetrySection');
+    const qsTelemetryStatusBadge = document.getElementById('qsTelemetryStatusBadge');
+    const qsTelemetryList = document.getElementById('qsTelemetryList');
+    const qsTelemetryEmptyMsg = document.getElementById('qsTelemetryEmptyMsg');
+    const qsReceivedResultsBar = document.getElementById('qsReceivedResultsBar');
+    const qsReceivedResultsTitle = document.getElementById('qsReceivedResultsTitle');
+    const qsReceivedResultsDesc = document.getElementById('qsReceivedResultsDesc');
+    const qsDownloadAllZipBtn = document.getElementById('qsDownloadAllZipBtn');
+    const qsCopyReceivedTextBtn = document.getElementById('qsCopyReceivedTextBtn');
+
+    // Consent Modal
+    const qsConsentModal = document.getElementById('qsConsentModal');
+    const qsConsentSenderName = document.getElementById('qsConsentSenderName');
+    const qsConsentContentType = document.getElementById('qsConsentContentType');
+    const qsConsentTotalSize = document.getElementById('qsConsentTotalSize');
+    const qsConsentItemsList = document.getElementById('qsConsentItemsList');
+    const qsConsentAcceptBtn = document.getElementById('qsConsentAcceptBtn');
+    const qsConsentDeclineBtn = document.getElementById('qsConsentDeclineBtn');
+
+    // Direct Mesh Mode Elements
+    const myPeerIdInput = document.getElementById('myPeerIdInput');
+    const copyIdBtn = document.getElementById('copyIdBtn');
+    const copyBtnText = document.getElementById('copyBtnText');
+    const copyIcon = document.getElementById('copyIcon');
+    const refreshIdBtn = document.getElementById('refreshIdBtn');
+    const copyShareLinkBtn = document.getElementById('copyShareLinkBtn');
+    const showQrBtn = document.getElementById('showQrBtn');
+    const idLoadingSpinner = document.getElementById('idLoadingSpinner');
+    const unconnectedInputRow = document.getElementById('unconnectedInputRow');
+    const remotePeerIdInput = document.getElementById('remotePeerIdInput');
+    const connectBtn = document.getElementById('connectBtn');
+    const disconnectBtn = document.getElementById('disconnectBtn');
+    const connectedPeerBox = document.getElementById('connectedPeerBox');
+    const activePeerIdText = document.getElementById('activePeerIdText');
+    const peerStateLabel = document.getElementById('peerStateLabel');
+
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    const singleFileInput = document.getElementById('singleFileInput');
+    const browseFilesBtn = document.getElementById('browseFilesBtn');
+    const browseFolderBtn = document.getElementById('browseFolderBtn');
+    const dropzoneReadyBadge = document.getElementById('dropzoneReadyBadge');
+    const stagedFilesContainer = document.getElementById('stagedFilesContainer');
+    const stagedFilesList = document.getElementById('stagedFilesList');
+    const stagedCount = document.getElementById('stagedCount');
+    const stagedTotalSize = document.getElementById('stagedTotalSize');
+    const transferReadyWarning = document.getElementById('transferReadyWarning');
+    const clearStagedBtn = document.getElementById('clearStagedBtn');
+    const startTransferBtn = document.getElementById('startTransferBtn');
+    const quickTestBannerBtn = document.getElementById('quickTestBannerBtn');
+
+    const activeTransfersList = document.getElementById('activeTransfersList');
+    const noActiveTransfersMsg = document.getElementById('noActiveTransfersMsg');
+    const activeTransfersCount = document.getElementById('activeTransfersCount');
+    const historyTableBody = document.getElementById('historyTableBody');
+    const emptyHistoryRow = document.getElementById('emptyHistoryRow');
+    const historyCountBadge = document.getElementById('historyCountBadge');
+    const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+
+    const qrModal = document.getElementById('qrModal');
+    const closeQrBtn = document.getElementById('closeQrBtn');
+    const closeQrBottomBtn = document.getElementById('closeQrBottomBtn');
+    const qrCodeContainer = document.getElementById('qrCodeContainer');
+    const qrLinkText = document.getElementById('qrLinkText');
+    const qrModalTitle = document.getElementById('qrModalTitle');
+    const qrModalSubtitle = document.getElementById('qrModalSubtitle');
+    const qrModalCodePill = document.getElementById('qrModalCodePill');
+    const qrModalCodeValue = document.getElementById('qrModalCodeValue');
+    const qrModalTimerNotice = document.getElementById('qrModalTimerNotice');
+    const copyQrLinkBtn = document.getElementById('copyQrLinkBtn');
+    const copyQrLinkBtnText = document.getElementById('copyQrLinkBtnText');
+
+    // Real-Life Extensions DOM References
+    const myDeviceBadgeBtn = document.getElementById('myDeviceBadgeBtn');
+    const myDeviceNameHeaderDisplay = document.getElementById('myDeviceNameHeaderDisplay');
+    const soundToggleBtn = document.getElementById('soundToggleBtn');
+    const soundOnIcon = document.getElementById('soundOnIcon');
+    const soundOffIcon = document.getElementById('soundOffIcon');
+    const guideModalBtn = document.getElementById('guideModalBtn');
+    const guideModal = document.getElementById('guideModal');
+    const closeGuideModalBtn = document.getElementById('closeGuideModalBtn');
+    const closeGuideModalBottomBtn = document.getElementById('closeGuideModalBottomBtn');
+    const deviceRenameModal = document.getElementById('deviceRenameModal');
+    const deviceNameCustomInput = document.getElementById('deviceNameCustomInput');
+    const cancelDeviceRenameBtn = document.getElementById('cancelDeviceRenameBtn');
+    const saveDeviceRenameBtn = document.getElementById('saveDeviceRenameBtn');
+    const fullWindowDropOverlay = document.getElementById('fullWindowDropOverlay');
+
+    // ==========================================
+    // AUDIO FEEDBACK SYNTHESIZER (Web Audio API)
+    // ==========================================
+    let soundEnabled = localStorage.getItem('peerdrop_sound') !== 'false';
+    let audioCtx = null;
+
+    function getAudioContext() {
+      if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) audioCtx = new AudioContext();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    function playSound(type) {
+      if (!soundEnabled) return;
+      try {
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        if (type === 'connect') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(523.25, now);
+          osc.frequency.exponentialRampToValueAtTime(880, now + 0.15);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+          osc.start(now);
+          osc.stop(now + 0.28);
+        } else if (type === 'complete') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(587.33, now); // D5
+          osc.frequency.setValueAtTime(739.99, now + 0.08); // F#5
+          osc.frequency.setValueAtTime(880, now + 0.16); // A5
+          gain.gain.setValueAtTime(0.09, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+          osc.start(now);
+          osc.stop(now + 0.35);
+        } else if (type === 'incoming') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(659.25, now); // E5
+          osc.frequency.setValueAtTime(987.77, now + 0.1); // B5
+          gain.gain.setValueAtTime(0.1, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+          osc.start(now);
+          osc.stop(now + 0.3);
+        } else if (type === 'click') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(750, now);
+          gain.gain.setValueAtTime(0.02, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+          osc.start(now);
+          osc.stop(now + 0.05);
+        }
+      } catch (e) {}
+    }
+
+    function updateSoundUi() {
+      if (!soundOnIcon || !soundOffIcon) return;
+      if (soundEnabled) {
+        soundOnIcon.classList.remove('hidden');
+        soundOffIcon.classList.add('hidden');
+      } else {
+        soundOnIcon.classList.add('hidden');
+        soundOffIcon.classList.remove('hidden');
+      }
+    }
+
+    // ==========================================
+    // UTILITIES & DEVICE DETECTION
+    // ==========================================
+    function getDeviceName() {
+      const saved = localStorage.getItem('peerdrop_device_name');
+      if (saved && saved.trim()) return saved.trim();
+
+      const ua = navigator.userAgent;
+      let os = 'Device';
+      if (/Macintosh|Mac OS X/i.test(ua)) os = 'MacBook Pro';
+      else if (/Windows/i.test(ua)) os = 'Windows PC';
+      else if (/iPhone/i.test(ua)) os = 'iPhone';
+      else if (/iPad/i.test(ua)) os = 'iPad';
+      else if (/Android/i.test(ua)) os = 'Android Phone';
+      else if (/Linux/i.test(ua)) os = 'Linux Box';
+
+      let browser = 'Browser';
+      if (/Chrome/i.test(ua) && !/Edg|OPR/i.test(ua)) browser = 'Chrome';
+      else if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) browser = 'Safari';
+      else if (/Firefox/i.test(ua)) browser = 'Firefox';
+      else if (/Edg/i.test(ua)) browser = 'Edge';
+
+      return `${os} · ${browser}`;
+    }
+
+    function updateDeviceNameUi() {
+      const name = getDeviceName();
+      if (myDeviceNameHeaderDisplay) myDeviceNameHeaderDisplay.textContent = name;
+    }
+
+    function formatBytes(bytes, decimals = 2) {
+      if (!bytes || bytes === 0) return '0 B';
+      const k = 1024;
+      const dm = decimals < 0 ? 0 : decimals;
+      const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+
+    function formatSpeed(bytesPerSec) {
+      if (!bytesPerSec || bytesPerSec <= 0) return '0 KB/s';
+      if (bytesPerSec >= 1024 * 1024) {
+        return (bytesPerSec / (1024 * 1024)).toFixed(2) + ' MB/s';
+      }
+      return (bytesPerSec / 1024).toFixed(1) + ' KB/s';
+    }
+
+    function formatEta(seconds) {
+      if (isNaN(seconds) || !isFinite(seconds) || seconds <= 0) return '--';
+      if (seconds < 60) return `${Math.ceil(seconds)}s`;
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.ceil(seconds % 60);
+      return `${mins}m ${secs}s`;
+    }
+
+    function generateCleanId() {
+      const part1 = Math.random().toString(36).substring(2, 6);
+      const part2 = Math.random().toString(36).substring(2, 6);
+      return `pd-${part1}-${part2}`;
+    }
+
+    function generate6DigitCode() {
+      return Math.floor(100000 + Math.random() * 900000).toString();
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = 'pointer-events-auto p-3 rounded-lg border text-xs font-mono shadow-xl flex items-center gap-2.5 transition-all duration-300 transform translate-y-2 opacity-0';
+
+      if (type === 'success') {
+        toast.className += ' bg-emerald-950/90 border-emerald-500/50 text-emerald-200';
+      } else if (type === 'error') {
+        toast.className += ' bg-rose-950/90 border-rose-500/50 text-rose-200';
+      } else {
+        toast.className += ' bg-slate-900/90 border-slate-700 text-slate-200';
+      }
+
+      toast.innerHTML = `
+        <span class="w-2 h-2 rounded-full ${type === 'success' ? 'bg-emerald-400' : type === 'error' ? 'bg-rose-400' : 'bg-blue-400'}"></span>
+        <span class="flex-1 font-sans text-xs">${message}</span>
+      `;
+
+      container.appendChild(toast);
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 250);
+      }, 3500);
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function triggerBrowserDownload(url, filename) {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    function getFileTypeIcon(filename) {
+      const ext = filename.split('.').pop().toLowerCase();
+      if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'avif', 'bmp', 'ico'].includes(ext)) {
+        return `<svg class="w-3.5 h-3.5 text-cyan-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>`;
+      }
+      if (['mp4', 'mkv', 'mov', 'webm', 'avi'].includes(ext)) {
+        return `<svg class="w-3.5 h-3.5 text-purple-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>`;
+      }
+      if (['mp3', 'wav', 'flac', 'aac', 'ogg', 'm4a'].includes(ext)) {
+        return `<svg class="w-3.5 h-3.5 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>`;
+      }
+      if (['zip', 'rar', '7z', 'tar', 'gz', 'bz2'].includes(ext)) {
+        return `<svg class="w-3.5 h-3.5 text-yellow-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>`;
+      }
+      if (['js', 'ts', 'tsx', 'jsx', 'json', 'html', 'css', 'py', 'go', 'rs', 'c', 'cpp', 'sh', 'sql'].includes(ext)) {
+        return `<svg class="w-3.5 h-3.5 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>`;
+      }
+      return `<svg class="w-3.5 h-3.5 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>`;
+    }
+
+    // ==========================================
+    // THEME MANAGEMENT (LIGHT & DARK MODE)
+    // ==========================================
+    function initTheme() {
+      const saved = localStorage.getItem('theme');
+      if (saved === 'light') {
+        document.documentElement.classList.remove('dark');
+        sunIcon.classList.add('hidden');
+        moonIcon.classList.remove('hidden');
+      } else {
+        document.documentElement.classList.add('dark');
+        sunIcon.classList.remove('hidden');
+        moonIcon.classList.add('hidden');
+      }
+    }
+
+    themeToggleBtn.addEventListener('click', () => {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      if (isDark) {
+        sunIcon.classList.remove('hidden');
+        moonIcon.classList.add('hidden');
+        showToast('Switched to Obsidian Dark theme', 'info');
+      } else {
+        sunIcon.classList.add('hidden');
+        moonIcon.classList.remove('hidden');
+        showToast('Switched to Crisp Light theme', 'info');
+      }
+    });
+
+    // ==========================================
+    // VIEW SWITCHER (QUICKSHARE vs DIRECT MESH)
+    // ==========================================
+    function switchMode(mode) {
+      currentMode = mode;
+      if (mode === 'quickshare') {
+        navTabQuickShare.className = 'px-3 py-1 rounded-md font-medium text-xs transition flex items-center gap-1.5 bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 shadow-sm cursor-pointer';
+        navTabDirectMesh.className = 'px-3 py-1 rounded-md font-medium text-xs transition flex items-center gap-1.5 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 cursor-pointer';
+        viewQuickShare.classList.remove('hidden');
+        viewDirectMesh.classList.add('hidden');
+      } else {
+        navTabDirectMesh.className = 'px-3 py-1 rounded-md font-medium text-xs transition flex items-center gap-1.5 bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 shadow-sm cursor-pointer';
+        navTabQuickShare.className = 'px-3 py-1 rounded-md font-medium text-xs transition flex items-center gap-1.5 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 cursor-pointer';
+        viewDirectMesh.classList.remove('hidden');
+        viewQuickShare.classList.add('hidden');
+      }
+    }
+
+    navTabQuickShare.addEventListener('click', () => switchMode('quickshare'));
+    navTabDirectMesh.addEventListener('click', () => switchMode('directmesh'));
+
+    // ==========================================
+    // QUICKSHARE CODE CONNECTION ENGINE
+    // ==========================================
+    function setupQuickShareHostCode() {
+      if (activeConnection) return;
+
+      qsCode = generate6DigitCode();
+      const peerId = `qs-${qsCode}`;
+      qsGeneratedCodeDisplay.textContent = `${qsCode.slice(0, 3)} · ${qsCode.slice(3)}`;
+
+      // 5-minute expiration timer
+      qsCodeExpiresAt = Date.now() + 5 * 60 * 1000;
+      startCodeCountdown();
+
+      // Initialize host peer with qs-XXXXXX ID
+      if (peer) {
+        try { peer.destroy(); } catch (e) {}
+      }
+
+      peer = new Peer(peerId, {
+        config: iceConfig,
+        debug: 1
+      });
+
+      peer.on('open', (id) => {
+        myPeerId = id;
+        myPeerIdInput.value = id;
+        idLoadingSpinner.classList.add('hidden');
+        updateConnectionStatus('disconnected');
+      });
+
+      peer.on('connection', (conn) => {
+        handleIncomingConnection(conn);
+      });
+
+      peer.on('error', (err) => {
+        console.error('PeerJS error:', err);
+        if (err.type === 'unavailable-id') {
+          setupQuickShareHostCode();
+        } else if (err.type === 'peer-unavailable') {
+          showToast('Peer code not found or device is offline', 'error');
+          registerFailedAttempt();
+          updateConnectionStatus('disconnected');
+        } else {
+          showToast(`Connection notice: ${err.message || err.type}`, 'error');
+          updateConnectionStatus('disconnected');
+        }
+      });
+    }
+
+    function startCodeCountdown() {
+      if (qsCodeTimer) clearInterval(qsCodeTimer);
+      updateCountdownDisplay();
+
+      qsCodeTimer = setInterval(() => {
+        const remaining = Math.max(0, Math.floor((qsCodeExpiresAt - Date.now()) / 1000));
+        const mins = String(Math.floor(remaining / 60)).padStart(2, '0');
+        const secs = String(remaining % 60).padStart(2, '0');
+        qsCountdownText.textContent = `${mins}:${secs}`;
+
+        if (!qrModal.classList.contains('hidden') && !qrModalCodePill.classList.contains('hidden')) {
+          qrModalTimerNotice.textContent = `Expires in ${mins}:${secs}`;
+        }
+
+        if (remaining <= 0) {
+          clearInterval(qsCodeTimer);
+          qsCountdownText.textContent = 'Expired';
+          qsGeneratedCodeDisplay.textContent = 'EXPIRED';
+          qsGeneratedCodeDisplay.classList.add('text-rose-500');
+          if (!qrModal.classList.contains('hidden') && !qrModalCodePill.classList.contains('hidden')) {
+            qrModalTimerNotice.textContent = 'Code expired';
+            qrModalCodeValue.textContent = 'EXPIRED';
+          }
+          showToast('Connection code expired. Click Regenerate for a fresh code.', 'error');
+        }
+      }, 1000);
+    }
+
+    function updateCountdownDisplay() {
+      qsGeneratedCodeDisplay.classList.remove('text-rose-500');
+      const remaining = Math.max(0, Math.floor((qsCodeExpiresAt - Date.now()) / 1000));
+      const mins = String(Math.floor(remaining / 60)).padStart(2, '0');
+      const secs = String(remaining % 60).padStart(2, '0');
+      qsCountdownText.textContent = `${mins}:${secs}`;
+    }
+
+    qsRegenerateCodeBtn.addEventListener('click', () => {
+      if (activeConnection) {
+        if (!confirm('Regenerating code will disconnect active device. Continue?')) return;
+        teardownConnection();
+      }
+      setupQuickShareHostCode();
+      showToast('New 6-digit code generated', 'info');
+      // If QR modal is open, refresh it with the new code immediately
+      if (!qrModal.classList.contains('hidden') && !qrModalCodePill.classList.contains('hidden')) {
+        openQuickShareQrModal();
+      }
+    });
+
+    qsCopyCodeBtn.addEventListener('click', () => {
+      if (!qsCode) return;
+      navigator.clipboard.writeText(qsCode).then(() => {
+        qsCopyCodeBtnText.textContent = 'Copied Code!';
+        showToast(`Code "${qsCode}" copied to clipboard`, 'success');
+        setTimeout(() => {
+          qsCopyCodeBtnText.textContent = 'Copy 6-Digit Code';
+        }, 2000);
+      });
+    });
+
+    qsTestTabWithCodeBtn.addEventListener('click', () => {
+      if (!qsCode) return;
+      const url = new URL(window.location.href);
+      url.searchParams.set('code', qsCode);
+      window.open(url.toString(), '_blank');
+    });
+
+    // ==========================================
+    // QR CODE SHARING & MODAL ENGINE
+    // ==========================================
+    function renderQrCode(text) {
+      qrCodeContainer.innerHTML = '';
+      try {
+        if (typeof QRCode !== 'undefined') {
+          new QRCode(qrCodeContainer, {
+            text: text,
+            width: 190,
+            height: 190,
+            colorDark: '#090d16',
+            colorLight: '#ffffff',
+            correctLevel: (typeof QRCode.CorrectLevel !== 'undefined') ? QRCode.CorrectLevel.M : 0
+          });
+        } else {
+          // Dynamic web fallback if CDN is delayed
+          const img = document.createElement('img');
+          img.src = `https://api.qrserver.com/v1/create-qr-code/?size=190x190&data=${encodeURIComponent(text)}`;
+          img.alt = 'QuickShare QR Code';
+          img.className = 'w-[190px] h-[190px] rounded block';
+          qrCodeContainer.appendChild(img);
+        }
+      } catch (err) {
+        console.warn('QRCode JS render notice, using image fallback', err);
+        const img = document.createElement('img');
+        img.src = `https://api.qrserver.com/v1/create-qr-code/?size=190x190&data=${encodeURIComponent(text)}`;
+        img.alt = 'QuickShare QR Code';
+        img.className = 'w-[190px] h-[190px] rounded block';
+        qrCodeContainer.appendChild(img);
+      }
+    }
+
+    function openQuickShareQrModal() {
+      if (!qsCode || qsGeneratedCodeDisplay.textContent === 'EXPIRED') {
+        setupQuickShareHostCode();
+      }
+
+      const url = new URL(window.location.origin + window.location.pathname);
+      url.searchParams.set('code', qsCode);
+      url.searchParams.delete('peer');
+      const shareUrl = url.toString();
+
+      qrModalTitle.textContent = 'QuickShare QR Code';
+      qrModalSubtitle.textContent = 'Scan with phone camera to connect instantly';
+      qrLinkText.textContent = shareUrl;
+      qrLinkText.title = shareUrl;
+
+      qrModalCodePill.classList.remove('hidden');
+      qrModalCodeValue.textContent = `${qsCode.slice(0, 3)} · ${qsCode.slice(3)}`;
+      qrModalTimerNotice.textContent = `Expires in ${qsCountdownText.textContent}`;
+
+      renderQrCode(shareUrl);
+      qrModal.classList.remove('hidden');
+    }
+
+    function openDirectMeshQrModal() {
+      if (!myPeerId) {
+        showToast('Binding peer network identity...', 'info');
+        return;
+      }
+
+      const url = new URL(window.location.origin + window.location.pathname);
+      url.searchParams.set('peer', myPeerId);
+      url.searchParams.delete('code');
+      const shareUrl = url.toString();
+
+      qrModalTitle.textContent = 'Direct Peer QR Code';
+      qrModalSubtitle.textContent = 'Point camera to auto-pair with this device node';
+      qrLinkText.textContent = shareUrl;
+      qrLinkText.title = shareUrl;
+
+      qrModalCodePill.classList.add('hidden');
+      renderQrCode(shareUrl);
+      qrModal.classList.remove('hidden');
+    }
+
+    function closeQrModal() {
+      qrModal.classList.add('hidden');
+    }
+
+    closeQrBtn.addEventListener('click', closeQrModal);
+    closeQrBottomBtn.addEventListener('click', closeQrModal);
+    qrModal.addEventListener('click', (e) => {
+      if (e.target === qrModal) closeQrModal();
+    });
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !qrModal.classList.contains('hidden')) {
+        closeQrModal();
+      }
+    });
+
+    copyQrLinkBtn.addEventListener('click', () => {
+      const url = qrLinkText.textContent.trim();
+      if (!url) return;
+      navigator.clipboard.writeText(url).then(() => {
+        copyQrLinkBtnText.textContent = 'Copied Link!';
+        showToast('Auto-connect URL copied to clipboard', 'success');
+        setTimeout(() => {
+          copyQrLinkBtnText.textContent = 'Copy Link';
+        }, 2000);
+      });
+    });
+
+    qsShareQrBtn.addEventListener('click', openQuickShareQrModal);
+    if (qsQuickQrIconBtn) qsQuickQrIconBtn.addEventListener('click', openQuickShareQrModal);
+    if (showQrBtn) showQrBtn.addEventListener('click', openDirectMeshQrModal);
+
+    if (copyIdBtn) {
+      copyIdBtn.addEventListener('click', () => {
+        if (!myPeerId) return;
+        navigator.clipboard.writeText(myPeerId).then(() => {
+          copyBtnText.textContent = 'Copied!';
+          showToast(`Node ID "${myPeerId}" copied`, 'success');
+          setTimeout(() => {
+            copyBtnText.textContent = 'Copy';
+          }, 2000);
+        });
+      });
+    }
+
+    if (copyShareLinkBtn) {
+      copyShareLinkBtn.addEventListener('click', () => {
+        if (!myPeerId) return;
+        const url = new URL(window.location.origin + window.location.pathname);
+        url.searchParams.set('peer', myPeerId);
+        navigator.clipboard.writeText(url.toString()).then(() => {
+          showToast('Direct Peer Link copied to clipboard', 'success');
+        });
+      });
+    }
+
+    if (refreshIdBtn) {
+      refreshIdBtn.addEventListener('click', () => {
+        if (activeConnection) {
+          if (!confirm('Generating new node ID will disconnect active peer. Continue?')) return;
+          teardownConnection();
+        }
+        initPeer();
+        showToast('Generated fresh Node ID', 'info');
+      });
+    }
+
+    if (connectBtn) {
+      connectBtn.addEventListener('click', () => {
+        const remoteId = remotePeerIdInput.value.trim();
+        if (!remoteId) {
+          showToast('Please enter a target Node ID', 'error');
+          return;
+        }
+        if (remoteId === myPeerId) {
+          showToast('Cannot connect node to itself', 'error');
+          return;
+        }
+        connectToRemotePeer(remoteId);
+      });
+    }
+
+    if (remotePeerIdInput) {
+      remotePeerIdInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') connectBtn.click();
+      });
+    }
+
+    // 6-Digit Box Auto-advance, Backspace & Paste
+    qsDigitInputs.forEach((input, idx) => {
+      input.addEventListener('input', () => {
+        const val = input.value.replace(/[^0-9]/g, '');
+        input.value = val ? val[val.length - 1] : '';
+        if (val && idx < 5) {
+          qsDigitInputs[idx + 1].focus();
+          qsDigitInputs[idx + 1].select();
+        }
+        checkQsCodeFilled();
+      });
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && !input.value && idx > 0) {
+          qsDigitInputs[idx - 1].focus();
+        } else if (e.key === 'ArrowLeft' && idx > 0) {
+          qsDigitInputs[idx - 1].focus();
+        } else if (e.key === 'ArrowRight' && idx < 5) {
+          qsDigitInputs[idx + 1].focus();
+        } else if (e.key === 'Enter') {
+          qsConnectBtn.click();
+        }
+      });
+
+      input.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const pasteData = (e.clipboardData || window.clipboardData).getData('text');
+        const digits = pasteData.replace(/[^0-9]/g, '').slice(0, 6);
+        if (digits) {
+          digits.split('').forEach((d, i) => {
+            if (qsDigitInputs[i]) qsDigitInputs[i].value = d;
+          });
+          const nextIdx = Math.min(digits.length, 5);
+          qsDigitInputs[nextIdx].focus();
+          checkQsCodeFilled();
+        }
+      });
+    });
+
+    function getEnteredQsCode() {
+      return qsDigitInputs.map(i => i.value.trim()).join('');
+    }
+
+    function checkQsCodeFilled() {
+      const code = getEnteredQsCode();
+      qsConnectBtn.disabled = code.length !== 6 || qsLockoutTimer !== null;
+    }
+
+    // Brute-force rate limiting protection
+    function registerFailedAttempt() {
+      qsFailedAttempts++;
+      if (qsFailedAttempts >= 5) {
+        let lockoutSecs = 30;
+        qsLockoutAlert.classList.remove('hidden');
+        qsLockoutTimerText.textContent = `${lockoutSecs}s`;
+        qsConnectBtn.disabled = true;
+
+        if (qsLockoutTimer) clearInterval(qsLockoutTimer);
+        qsLockoutTimer = setInterval(() => {
+          lockoutSecs--;
+          qsLockoutTimerText.textContent = `${lockoutSecs}s`;
+          if (lockoutSecs <= 0) {
+            clearInterval(qsLockoutTimer);
+            qsLockoutTimer = null;
+            qsFailedAttempts = 0;
+            qsLockoutAlert.classList.add('hidden');
+            checkQsCodeFilled();
+          }
+        }, 1000);
+      }
+    }
+
+    // Connect using 6-Digit Code
+    qsConnectBtn.addEventListener('click', () => {
+      const code = getEnteredQsCode();
+      if (code.length !== 6) return;
+      if (qsCode && code === qsCode) {
+        showToast('Cannot connect device to itself', 'error');
+        return;
+      }
+
+      connectToRemotePeer(`qs-${code}`);
+    });
+
+    // ==========================================
+    // PEERJS CONNECTION LIFECYCLE
+    // ==========================================
+    function connectToRemotePeer(remoteId) {
+      if (!peer || peer.destroyed) {
+        initPeer();
+      }
+
+      const initiate = () => {
+        updateConnectionStatus('connecting');
+        showToast(`Contacting peer node (${remoteId})...`, 'info');
+        const conn = peer.connect(remoteId, {
+          reliable: true
+        });
+        setupConnectionListeners(conn);
+      };
+
+      if (peer.open) {
+        initiate();
+      } else {
+        updateConnectionStatus('connecting');
+        showToast(`Binding WebRTC network to connect to ${remoteId}...`, 'info');
+        peer.once('open', () => {
+          initiate();
+        });
+      }
+    }
+
+    function handleIncomingConnection(conn) {
+      if (activeConnection) {
+        conn.close();
+        return;
+      }
+      showToast(`Inbound connection from ${conn.peer}`, 'info');
+      setupConnectionListeners(conn);
+    }
+
+    function setupConnectionListeners(conn) {
+      activeConnection = conn;
+
+      conn.on('open', () => {
+        // Exchange device greeting
+        conn.send({
+          type: 'DEVICE_HELLO',
+          deviceName: getDeviceName(),
+          time: Date.now()
+        });
+
+        updateConnectionStatus('connected', conn.peer);
+        showToast('Device connected successfully!', 'success');
+        startPingMonitor();
+      });
+
+      conn.on('data', (data) => {
+        handleDataChannelPacket(data);
+      });
+
+      conn.on('close', () => {
+        showToast('Device disconnected', 'info');
+        teardownConnection();
+      });
+
+      conn.on('error', (err) => {
+        console.error('Connection error:', err);
+        showToast('DataChannel session error', 'error');
+        teardownConnection();
+      });
+    }
+
+    function teardownConnection() {
+      if (pingInterval) {
+        clearInterval(pingInterval);
+        pingInterval = null;
+      }
+      if (qsSessionTimer) {
+        clearInterval(qsSessionTimer);
+        qsSessionTimer = null;
+      }
+      if (activeConnection) {
+        try { activeConnection.close(); } catch (e) {}
+        activeConnection = null;
+      }
+      updateConnectionStatus('disconnected');
+    }
+
+    function startPingMonitor() {
+      if (pingInterval) clearInterval(pingInterval);
+      pingInterval = setInterval(() => {
+        if (activeConnection && activeConnection.open) {
+          lastPingTime = performance.now();
+          activeConnection.send({ type: 'PING', timestamp: lastPingTime });
+        }
+      }, 3000);
+    }
+
+    function updateConnectionStatus(state, remoteId = null) {
+      if (state === 'connected') {
+        playSound('connect');
+        connectionStatusBadge.className = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 transition-colors';
+        statusIndicatorDot.className = 'relative inline-flex rounded-full h-2 w-2 bg-emerald-500';
+        statusIndicatorDotPulse.classList.remove('hidden');
+        statusIndicatorText.textContent = 'CONNECTED';
+
+        // Direct mesh elements
+        peerStateLabel.textContent = 'CONNECTED';
+        peerStateLabel.className = 'text-xs font-mono text-emerald-600 dark:text-emerald-400';
+        unconnectedInputRow.classList.add('hidden');
+        connectedPeerBox.classList.remove('hidden');
+        activePeerIdText.textContent = remoteId || 'Remote Peer';
+        dropzoneReadyBadge.textContent = 'Channel Active';
+        dropzoneReadyBadge.className = 'text-[11px] font-mono text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30';
+
+        // QuickShare elements
+        qsGatewaySection.classList.add('hidden');
+        qsActiveSessionBar.classList.remove('hidden');
+        qsChannelReadyBadge.textContent = 'Ready to Stream';
+        qsChannelReadyBadge.className = 'text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30';
+
+        pingBadge.classList.remove('hidden');
+        pingBadge.classList.add('flex');
+
+        // Start session duration timer
+        qsSessionStartTime = Date.now();
+        if (qsSessionTimer) clearInterval(qsSessionTimer);
+        qsSessionTimer = setInterval(() => {
+          const elapsedSecs = Math.floor((Date.now() - qsSessionStartTime) / 1000);
+          const mins = String(Math.floor(elapsedSecs / 60)).padStart(2, '0');
+          const secs = String(elapsedSecs % 60).padStart(2, '0');
+          qsSessionUptime.textContent = `${mins}:${secs}`;
+        }, 1000);
+
+        // Enable buttons
+        qsSendFilesBtn.disabled = qsStagedFiles.length === 0;
+        qsSendFolderBtn.disabled = qsStagedFolderFiles.length === 0;
+        qsSendTextBtn.disabled = !qsTextInput.value.trim();
+        startTransferBtn.disabled = stagedFiles.length === 0;
+        if (transferReadyWarning) transferReadyWarning.classList.add('hidden');
+      } else if (state === 'connecting') {
+        connectionStatusBadge.className = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 transition-colors';
+        statusIndicatorDot.className = 'relative inline-flex rounded-full h-2 w-2 bg-amber-500 animate-pulse';
+        statusIndicatorDotPulse.classList.add('hidden');
+        statusIndicatorText.textContent = 'CONNECTING';
+
+        peerStateLabel.textContent = 'HANDSHAKE...';
+        peerStateLabel.className = 'text-xs font-mono text-amber-500';
+        unconnectedInputRow.classList.remove('hidden');
+        connectedPeerBox.classList.add('hidden');
+        connectBtn.disabled = true;
+        remotePeerIdInput.disabled = true;
+        dropzoneReadyBadge.textContent = 'Handshake in Progress';
+        dropzoneReadyBadge.className = 'text-[11px] font-mono text-amber-500 px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30';
+
+        qsConnectBtn.disabled = true;
+        qsConnectBtnText.textContent = 'Connecting...';
+        qsChannelReadyBadge.textContent = 'Connecting...';
+
+        pingBadge.classList.add('hidden');
+        pingBadge.classList.remove('flex');
+        startTransferBtn.disabled = true;
+        qsSendFilesBtn.disabled = true;
+        qsSendFolderBtn.disabled = true;
+        qsSendTextBtn.disabled = true;
+      } else {
+        // Disconnected
+        connectionStatusBadge.className = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-600 dark:text-zinc-400 transition-colors';
+        statusIndicatorDot.className = 'relative inline-flex rounded-full h-2 w-2 bg-slate-400 dark:bg-zinc-500';
+        statusIndicatorDotPulse.classList.add('hidden');
+        statusIndicatorText.textContent = 'DISCONNECTED';
+
+        peerStateLabel.textContent = 'Awaiting Target';
+        peerStateLabel.className = 'text-xs font-mono text-slate-400 dark:text-zinc-500';
+        unconnectedInputRow.classList.remove('hidden');
+        connectedPeerBox.classList.add('hidden');
+        connectBtn.disabled = false;
+        remotePeerIdInput.disabled = false;
+        dropzoneReadyBadge.textContent = 'Standby';
+        dropzoneReadyBadge.className = 'text-[11px] font-mono text-slate-400 dark:text-zinc-500 px-2 py-0.5 rounded bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800';
+
+        qsGatewaySection.classList.remove('hidden');
+        qsActiveSessionBar.classList.add('hidden');
+        qsConnectBtnText.textContent = 'Connect Device';
+        checkQsCodeFilled();
+        qsChannelReadyBadge.textContent = 'Awaiting Peer';
+        qsChannelReadyBadge.className = 'text-[11px] font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-zinc-900 text-slate-500 dark:text-zinc-400 border border-slate-200 dark:border-zinc-800';
+
+        pingBadge.classList.add('hidden');
+        pingBadge.classList.remove('flex');
+        startTransferBtn.disabled = true;
+        qsSendFilesBtn.disabled = true;
+        qsSendFolderBtn.disabled = true;
+        qsSendTextBtn.disabled = true;
+        if (transferReadyWarning && stagedFiles.length > 0) transferReadyWarning.classList.remove('hidden');
+      }
+    }
+
+    qsDisconnectBtn.addEventListener('click', () => {
+      teardownConnection();
+      showToast('Device session disconnected', 'info');
+    });
+
+    disconnectBtn.addEventListener('click', () => {
+      teardownConnection();
+      showToast('Terminated peer connection', 'info');
+    });
+
+    // ==========================================
+    // PROTOCOL PACKET DISPATCHER
+    // ==========================================
+    function handleDataChannelPacket(data) {
+      if (!data) return;
+
+      if (data.type === 'PING') {
+        if (activeConnection && activeConnection.open) {
+          activeConnection.send({ type: 'PONG', timestamp: data.timestamp });
+        }
+        return;
+      }
+
+      if (data.type === 'PONG') {
+        const rtt = Math.round(performance.now() - data.timestamp);
+        pingValue.textContent = `${rtt} ms`;
+        return;
+      }
+
+      if (data.type === 'DEVICE_HELLO') {
+        qsRemoteDeviceName = data.deviceName || 'Remote Device';
+        qsConnectedDeviceName.textContent = qsRemoteDeviceName;
+        return;
+      }
+
+      // CONSENT REQUEST / RESPONSE
+      if (data.type === 'TRANSFER_REQUEST') {
+        onReceiveTransferRequest(data);
+        return;
+      }
+
+      if (data.type === 'TRANSFER_RESPONSE') {
+        onReceiveTransferResponse(data);
+        return;
+      }
+
+      // TEXT SNIPPET
+      if (data.type === 'TEXT_PAYLOAD') {
+        onReceiveTextPayload(data);
+        return;
+      }
+
+      // FILE STREAMING CHUNKS
+      if (data.type === 'TRANSFER_START') {
+        onReceiveTransferStart(data);
+        return;
+      }
+
+      if (data.type === 'TRANSFER_CHUNK') {
+        onReceiveTransferChunk(data);
+        return;
+      }
+
+      if (data.type === 'TRANSFER_COMPLETE') {
+        onReceiveTransferComplete(data);
+        return;
+      }
+
+      if (data.type === 'TRANSFER_CANCEL') {
+        onReceiveTransferCancel(data);
+        return;
+      }
+    }
+
+    // ==========================================
+    // CONSENT WORKFLOW (ACCEPT / DECLINE)
+    // ==========================================
+    function onReceiveTransferRequest(data) {
+      qsPendingConsentReq = data;
+      qsConsentSenderName.textContent = data.senderName || qsRemoteDeviceName;
+
+      if (data.payloadType === 'text') {
+        qsConsentContentType.textContent = `Text Note (${data.totalLength} chars)`;
+        qsConsentTotalSize.textContent = `${data.wordCount} words`;
+        qsConsentItemsList.innerHTML = `
+          <div class="p-2 rounded bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-xs font-mono text-slate-800 dark:text-zinc-200 line-clamp-3">
+            ${escapeHtml(data.textPreview)}
+          </div>
+        `;
+      } else {
+        const label = data.payloadType === 'folder' ? `Folder: ${data.folderName || 'Directory'}` : `${data.totalFiles} Files`;
+        qsConsentContentType.textContent = label;
+        qsConsentTotalSize.textContent = formatBytes(data.totalSize);
+
+        qsConsentItemsList.innerHTML = '';
+        (data.fileList || []).forEach(file => {
+          const div = document.createElement('div');
+          div.className = 'flex items-center justify-between py-1 border-b border-slate-200 dark:border-zinc-800/50 text-xs';
+          div.innerHTML = `
+            <span class="truncate font-mono text-[11px] max-w-[240px]">${escapeHtml(file.name)}</span>
+            <span class="font-mono text-slate-400 dark:text-zinc-500 text-[10px] shrink-0">${formatBytes(file.size)}</span>
+          `;
+          qsConsentItemsList.appendChild(div);
+        });
+
+        if (data.moreCount > 0) {
+          const div = document.createElement('div');
+          div.className = 'text-[10px] text-slate-400 dark:text-zinc-500 font-mono pt-1';
+          div.textContent = `+ ${data.moreCount} more files`;
+          qsConsentItemsList.appendChild(div);
+        }
+      }
+
+      qsConsentModal.classList.remove('hidden');
+      playSound('incoming');
+    }
+
+    qsConsentDeclineBtn.addEventListener('click', () => {
+      qsConsentModal.classList.add('hidden');
+      if (qsPendingConsentReq && activeConnection && activeConnection.open) {
+        activeConnection.send({
+          type: 'TRANSFER_RESPONSE',
+          reqId: qsPendingConsentReq.reqId,
+          accepted: false
+        });
+      }
+      qsPendingConsentReq = null;
+      showToast('Declined incoming transfer', 'info');
+    });
+
+    qsConsentAcceptBtn.addEventListener('click', () => {
+      qsConsentModal.classList.add('hidden');
+      if (qsPendingConsentReq && activeConnection && activeConnection.open) {
+        activeConnection.send({
+          type: 'TRANSFER_RESPONSE',
+          reqId: qsPendingConsentReq.reqId,
+          accepted: true
+        });
+        showToast('Accepted transfer. Awaiting stream...', 'success');
+      }
+      qsPendingConsentReq = null;
+    });
+
+    let currentSenderPendingResolve = null;
+
+    function requestTransferConsent(requestData) {
+      return new Promise((resolve) => {
+        const reqId = 'req_' + Date.now();
+        requestData.reqId = reqId;
+        requestData.senderName = getDeviceName();
+
+        currentSenderPendingResolve = resolve;
+        showToast('Waiting for recipient consent...', 'info');
+
+        activeConnection.send({
+          type: 'TRANSFER_REQUEST',
+          ...requestData
+        });
+      });
+    }
+
+    function onReceiveTransferResponse(data) {
+      if (currentSenderPendingResolve) {
+        currentSenderPendingResolve(data.accepted);
+        currentSenderPendingResolve = null;
+      }
+      if (!data.accepted) {
+        showToast('Transfer was declined by recipient', 'error');
+      }
+    }
+
+    // ==========================================
+    // TEXT SHARING ENGINE
+    // ==========================================
+    qsTextInput.addEventListener('input', () => {
+      const text = qsTextInput.value;
+      const chars = text.length;
+      const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+      qsTextStats.textContent = `${chars} characters · ${words} words`;
+      qsSendTextBtn.disabled = !text.trim() || !activeConnection || !activeConnection.open;
+    });
+
+    qsPasteClipboardBtn.addEventListener('click', async () => {
+      try {
+        const text = await navigator.clipboard.readText();
+        qsTextInput.value = text;
+        qsTextInput.dispatchEvent(new Event('input'));
+        showToast('Pasted text from clipboard', 'info');
+      } catch (e) {
+        showToast('Clipboard access denied. Press Cmd+V / Ctrl+V to paste manually', 'error');
+      }
+    });
+
+    qsSendTextBtn.addEventListener('click', async () => {
+      const text = qsTextInput.value.trim();
+      if (!text || !activeConnection || !activeConnection.open) return;
+
+      const words = text.split(/\s+/).length;
+      const accepted = await requestTransferConsent({
+        payloadType: 'text',
+        totalLength: text.length,
+        wordCount: words,
+        textPreview: text.slice(0, 100)
+      });
+
+      if (!accepted) return;
+
+      activeConnection.send({
+        type: 'TEXT_PAYLOAD',
+        content: text,
+        time: Date.now()
+      });
+
+      // Log in transfer history
+      addHistoryRecord({
+        id: 'txt_' + Date.now(),
+        type: 'Text',
+        fileName: text.slice(0, 40) + (text.length > 40 ? '...' : ''),
+        size: text.length,
+        direction: 'outgoing',
+        status: 'Completed',
+        textContent: text
+      });
+
+      qsTextInput.value = '';
+      qsTextInput.dispatchEvent(new Event('input'));
+      showToast('Text transmitted to device', 'success');
+    });
+
+    function onReceiveTextPayload(data) {
+      qsLastReceivedText = data.content;
+
+      // Show received results bar
+      qsReceivedResultsBar.classList.remove('hidden');
+      qsReceivedResultsTitle.textContent = 'Text Snippet Received';
+      qsReceivedResultsDesc.textContent = `${data.content.length} characters received from ${qsRemoteDeviceName}`;
+      qsCopyReceivedTextBtn.classList.remove('hidden');
+      qsDownloadAllZipBtn.classList.add('hidden');
+
+      addHistoryRecord({
+        id: 'txt_' + Date.now(),
+        type: 'Text',
+        fileName: data.content.slice(0, 40) + (data.content.length > 40 ? '...' : ''),
+        size: data.content.length,
+        direction: 'incoming',
+        status: 'Completed',
+        textContent: data.content
+      });
+
+      showToast('Received text snippet!', 'success');
+    }
+
+    qsCopyReceivedTextBtn.addEventListener('click', () => {
+      if (!qsLastReceivedText) return;
+      navigator.clipboard.writeText(qsLastReceivedText).then(() => {
+        showToast('Received text copied to clipboard!', 'success');
+      });
+    });
+
+    // ==========================================
+    // TELEMETRY ENGINE & UI CARDS
+    // ==========================================
+    function createTelemetryItem({ id, fileName, size, direction, isFolder }) {
+      if (qsTelemetryEmptyMsg) qsTelemetryEmptyMsg.classList.add('hidden');
+      if (qsTelemetryStatusBadge) {
+        qsTelemetryStatusBadge.textContent = 'Streaming';
+        qsTelemetryStatusBadge.className = 'text-[11px] font-mono text-cyan-500 px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/30 animate-pulse';
+      }
+      if (noActiveTransfersMsg) noActiveTransfersMsg.classList.add('hidden');
+
+      const isIncoming = direction === 'incoming';
+      const dirBadgeClass = isIncoming ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30' : 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30';
+      const dirText = isIncoming ? 'Receiving' : 'Sending';
+
+      const cardHtml = `
+        <div id="telemetryCard_${id}" class="p-3.5 rounded-xl bg-slate-50 dark:bg-app-bg border border-slate-200 dark:border-zinc-800 space-y-2 transition-all">
+          <div class="flex items-center justify-between text-xs">
+            <div class="flex items-center gap-2 overflow-hidden flex-1 mr-2">
+              <span class="p-1 rounded-md bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 shrink-0">
+                ${getFileTypeIcon(fileName)}
+              </span>
+              <div class="truncate">
+                <span class="font-medium text-slate-800 dark:text-zinc-200 truncate font-sans block text-xs" title="${escapeHtml(fileName)}">${escapeHtml(fileName)}</span>
+                <span class="font-mono text-[10px] text-slate-400 dark:text-zinc-500">${formatBytes(size)}</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <span class="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded border ${dirBadgeClass} font-semibold">${dirText}</span>
+              <span id="telemetryPct_${id}" class="font-mono text-xs font-bold text-slate-700 dark:text-zinc-300">0%</span>
+            </div>
+          </div>
+
+          <!-- Progress Track -->
+          <div class="w-full bg-slate-200 dark:bg-zinc-800 rounded-full h-1.5 overflow-hidden">
+            <div id="telemetryProgress_${id}" class="shimmer-track h-1.5 rounded-full transition-all duration-150" style="width: 0%"></div>
+          </div>
+
+          <!-- Metrics Footer: Speed & ETA -->
+          <div class="flex items-center justify-between text-[11px] font-mono text-slate-400 dark:text-zinc-500">
+            <div class="flex items-center gap-2">
+              <span id="telemetrySpeed_${id}">-- KB/s</span>
+              <span>·</span>
+              <span id="telemetryEta_${id}">ETA: --</span>
+            </div>
+            <div id="telemetryAction_${id}">
+              <span id="telemetryStatusText_${id}" class="text-[10px] uppercase tracking-wider text-slate-400 dark:text-zinc-500 font-semibold">Active</span>
+            </div>
+          </div>
+        </div>
+      `;
+
+      if (qsTelemetryList) {
+        const div = document.createElement('div');
+        div.innerHTML = cardHtml;
+        qsTelemetryList.insertBefore(div.firstElementChild, qsTelemetryList.firstElementChild);
+      }
+      if (activeTransfersList) {
+        const div = document.createElement('div');
+        div.innerHTML = cardHtml;
+        activeTransfersList.insertBefore(div.firstElementChild, activeTransfersList.firstElementChild);
+      }
+      if (activeTransfersCount) {
+        activeTransfersCount.textContent = `${activeTransfers.size + 1} active`;
+      }
+    }
+
+    function updateTelemetryItemProgress(id, pct, speedBytesPerSec, etaSecs, sentBytes, totalBytes) {
+      const pctEl = document.querySelectorAll(`[id="telemetryPct_${id}"]`);
+      pctEl.forEach(el => el.textContent = `${pct}%`);
+
+      const barEl = document.querySelectorAll(`[id="telemetryProgress_${id}"]`);
+      barEl.forEach(el => el.style.width = `${pct}%`);
+
+      const speedEl = document.querySelectorAll(`[id="telemetrySpeed_${id}"]`);
+      speedEl.forEach(el => el.textContent = formatSpeed(speedBytesPerSec));
+
+      const etaEl = document.querySelectorAll(`[id="telemetryEta_${id}"]`);
+      etaEl.forEach(el => el.textContent = `ETA: ${formatEta(etaSecs)}`);
+    }
+
+    function updateTelemetryItemStatus(id, status, sentBytes, totalBytes, downloadUrl = null) {
+      const pctEl = document.querySelectorAll(`[id="telemetryPct_${id}"]`);
+      pctEl.forEach(el => el.textContent = status === 'Sent' || status === 'Received' ? '100%' : status);
+
+      const barEl = document.querySelectorAll(`[id="telemetryProgress_${id}"]`);
+      barEl.forEach(el => {
+        el.style.width = status === 'Sent' || status === 'Received' ? '100%' : '0%';
+        if (status === 'Sent' || status === 'Received') {
+          el.className = 'h-1.5 rounded-full bg-emerald-500';
+        } else if (status === 'Failed' || status === 'Cancelled') {
+          el.className = 'h-1.5 rounded-full bg-rose-500';
+        }
+      });
+
+      const actionEl = document.querySelectorAll(`[id="telemetryAction_${id}"]`);
+      actionEl.forEach(el => {
+        if (downloadUrl) {
+          el.innerHTML = `
+            <a href="${downloadUrl}" download="${id}" class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-medium transition shadow-xs">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              <span>Download</span>
+            </a>
+          `;
+        } else {
+          el.innerHTML = `<span class="text-[10px] uppercase font-mono font-bold ${status === 'Sent' || status === 'Received' ? 'text-emerald-500' : 'text-rose-500'}">${status}</span>`;
+        }
+      });
+
+      const speedEl = document.querySelectorAll(`[id="telemetrySpeed_${id}"]`);
+      speedEl.forEach(el => el.textContent = status === 'Sent' || status === 'Received' ? 'Finished' : status);
+
+      const etaEl = document.querySelectorAll(`[id="telemetryEta_${id}"]`);
+      etaEl.forEach(el => el.textContent = formatBytes(totalBytes));
+
+      if (qsTelemetryStatusBadge) {
+        qsTelemetryStatusBadge.textContent = 'Idle';
+        qsTelemetryStatusBadge.className = 'text-[11px] font-mono text-slate-400 dark:text-zinc-500 px-2 py-0.5 rounded bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800';
+      }
+      if (activeTransfersCount) {
+        activeTransfersCount.textContent = '0 active';
+      }
+    }
+
+    // ==========================================
+    // 64KB CHUNKED WEBRTC TRANSMISSION ENGINE
+    // ==========================================
+    function waitForBufferDrain(dataChannel) {
+      return new Promise((resolve) => {
+        if (!dataChannel || dataChannel.bufferedAmount <= MAX_BUFFERED_AMOUNT) {
+          return resolve();
+        }
+        const check = () => {
+          if (!dataChannel || dataChannel.bufferedAmount <= MAX_BUFFERED_AMOUNT / 2) {
+            resolve();
+          } else {
+            setTimeout(check, 10);
+          }
+        };
+        setTimeout(check, 10);
+      });
+    }
+
+    async function transmitFile(file) {
+      if (!activeConnection || !activeConnection.open) {
+        showToast('Active device connection lost', 'error');
+        return;
+      }
+
+      const transferId = 'tx_' + Math.random().toString(36).substring(2, 9);
+      const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+      const relPath = file.webkitRelativePath || file.relativePath || file.name;
+
+      createTelemetryItem({
+        id: transferId,
+        fileName: file.name,
+        size: file.size,
+        direction: 'outgoing',
+        isFolder: relPath.includes('/')
+      });
+
+      activeConnection.send({
+        type: 'TRANSFER_START',
+        transferId: transferId,
+        name: file.name,
+        size: file.size,
+        mimeType: file.type || 'application/octet-stream',
+        relativePath: relPath,
+        totalChunks: totalChunks
+      });
+
+      const startTime = performance.now();
+      let sentBytes = 0;
+      let lastSpeedCalcTime = startTime;
+      let lastSpeedCalcBytes = 0;
+
+      for (let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
+        if (!activeConnection || !activeConnection.open) {
+          updateTelemetryItemStatus(transferId, 'Failed', 0, 0);
+          return;
+        }
+
+        const start = chunkIdx * CHUNK_SIZE;
+        const end = Math.min(file.size, start + CHUNK_SIZE);
+        const slice = file.slice(start, end);
+        const buffer = await slice.arrayBuffer();
+
+        const dc = activeConnection.dataChannel;
+        if (dc && dc.bufferedAmount > MAX_BUFFERED_AMOUNT) {
+          await waitForBufferDrain(dc);
+        }
+
+        activeConnection.send({
+          type: 'TRANSFER_CHUNK',
+          transferId: transferId,
+          chunkIndex: chunkIdx,
+          data: buffer
+        });
+
+        sentBytes += (end - start);
+        const now = performance.now();
+        if (now - lastSpeedCalcTime >= 250 || chunkIdx === totalChunks - 1) {
+          const deltaBytes = sentBytes - lastSpeedCalcBytes;
+          const deltaTime = (now - lastSpeedCalcTime) / 1000;
+          const speed = deltaTime > 0 ? (deltaBytes / deltaTime) : 0;
+          const remainingBytes = file.size - sentBytes;
+          const etaSecs = speed > 0 ? (remainingBytes / speed) : 0;
+          const pct = Math.min(100, Math.round((sentBytes / file.size) * 100));
+
+          updateTelemetryItemProgress(transferId, pct, speed, etaSecs, sentBytes, file.size);
+          lastSpeedCalcTime = now;
+          lastSpeedCalcBytes = sentBytes;
+        }
+      }
+
+      activeConnection.send({
+        type: 'TRANSFER_COMPLETE',
+        transferId: transferId
+      });
+
+      updateTelemetryItemStatus(transferId, 'Sent', file.size, file.size);
+      playSound('complete');
+
+      addHistoryRecord({
+        id: transferId,
+        type: file.name.split('.').pop().toUpperCase() || 'FILE',
+        fileName: file.name,
+        size: file.size,
+        direction: 'outgoing',
+        status: 'Completed',
+        timestamp: Date.now()
+      });
+
+      showToast(`Finished sending "${file.name}"`, 'success');
+    }
+
+    // ==========================================
+    // INCOMING TRANSFER CHUNK RECEIVER
+    // ==========================================
+    function onReceiveTransferStart(data) {
+      activeTransfers.set(data.transferId, {
+        transferId: data.transferId,
+        name: data.name,
+        size: data.size,
+        mimeType: data.mimeType,
+        relativePath: data.relativePath,
+        totalChunks: data.totalChunks,
+        chunks: [],
+        receivedBytes: 0,
+        receivedChunks: 0,
+        startTime: performance.now(),
+        lastTime: performance.now(),
+        lastBytes: 0
+      });
+
+      createTelemetryItem({
+        id: data.transferId,
+        fileName: data.name,
+        size: data.size,
+        direction: 'incoming',
+        isFolder: (data.relativePath || '').includes('/')
+      });
+
+      showToast(`Receiving "${data.name}" (${formatBytes(data.size)})...`, 'info');
+    }
+
+    function onReceiveTransferChunk(data) {
+      const transfer = activeTransfers.get(data.transferId);
+      if (!transfer) return;
+
+      transfer.chunks.push(data.data);
+      const chunkSize = data.data.byteLength || data.data.length || 0;
+      transfer.receivedBytes += chunkSize;
+      transfer.receivedChunks++;
+
+      const now = performance.now();
+      if (now - transfer.lastTime >= 250 || transfer.receivedChunks === transfer.totalChunks) {
+        const deltaBytes = transfer.receivedBytes - transfer.lastBytes;
+        const deltaTime = (now - transfer.lastTime) / 1000;
+        const speed = deltaTime > 0 ? (deltaBytes / deltaTime) : 0;
+        const remainingBytes = transfer.size - transfer.receivedBytes;
+        const etaSecs = speed > 0 ? (remainingBytes / speed) : 0;
+        const pct = Math.min(100, Math.round((transfer.receivedBytes / transfer.size) * 100));
+
+        updateTelemetryItemProgress(data.transferId, pct, speed, etaSecs, transfer.receivedBytes, transfer.size);
+        transfer.lastTime = now;
+        transfer.lastBytes = transfer.receivedBytes;
+      }
+    }
+
+    function onReceiveTransferComplete(data) {
+      const transfer = activeTransfers.get(data.transferId);
+      if (!transfer) return;
+
+      const blob = new Blob(transfer.chunks, { type: transfer.mimeType || 'application/octet-stream' });
+      const downloadUrl = URL.createObjectURL(blob);
+
+      qsLastReceivedBatch.push({
+        name: transfer.name,
+        blob: blob,
+        url: downloadUrl,
+        relativePath: transfer.relativePath || transfer.name
+      });
+
+      updateTelemetryItemStatus(data.transferId, 'Received', transfer.size, transfer.size, downloadUrl);
+      playSound('complete');
+
+      if (qsReceivedResultsBar) {
+        qsReceivedResultsBar.classList.remove('hidden');
+        qsReceivedResultsTitle.textContent = `${qsLastReceivedBatch.length} File(s) Received`;
+        qsReceivedResultsDesc.textContent = `Latest: ${transfer.name} (${formatBytes(transfer.size)}) ready in memory.`;
+        if (qsDownloadAllZipBtn) qsDownloadAllZipBtn.classList.remove('hidden');
+        if (qsCopyReceivedTextBtn) qsCopyReceivedTextBtn.classList.add('hidden');
+      }
+
+      addHistoryRecord({
+        id: data.transferId,
+        type: transfer.name.split('.').pop().toUpperCase() || 'FILE',
+        fileName: transfer.name,
+        size: transfer.size,
+        direction: 'incoming',
+        status: 'Completed',
+        downloadUrl: downloadUrl,
+        timestamp: Date.now()
+      });
+
+      showToast(`Received "${transfer.name}"!`, 'success');
+      activeTransfers.delete(data.transferId);
+    }
+
+    function onReceiveTransferCancel(data) {
+      updateTelemetryItemStatus(data.transferId, 'Cancelled', 0, 0);
+      activeTransfers.delete(data.transferId);
+      showToast('Transfer was cancelled by peer', 'error');
+    }
+
+    // ==========================================
+    // PERSISTENT TRANSFER HISTORY LEDGER
+    // ==========================================
+    function loadPersistedHistory() {
+      try {
+        const stored = localStorage.getItem('peerdrop_history');
+        if (stored) {
+          const list = JSON.parse(stored);
+          if (Array.isArray(list)) {
+            list.forEach(item => transferHistory.push(item));
+            renderHistoryTables();
+          }
+        }
+      } catch (e) {}
+    }
+
+    function addHistoryRecord(record) {
+      record.id = record.id || 'rec_' + Date.now();
+      record.timestamp = record.timestamp || Date.now();
+      transferHistory.unshift(record);
+
+      try {
+        const serializable = transferHistory.slice(0, 50).map(r => ({
+          id: r.id,
+          type: r.type,
+          fileName: r.fileName,
+          size: r.size,
+          direction: r.direction,
+          status: r.status,
+          timestamp: r.timestamp,
+          textContent: r.textContent || null
+        }));
+        localStorage.setItem('peerdrop_history', JSON.stringify(serializable));
+      } catch (e) {}
+
+      renderHistoryTables();
+    }
+
+    function renderHistoryTables() {
+      // 1. QuickShare History Table
+      if (qsHistoryTableBody) {
+        qsHistoryTableBody.innerHTML = '';
+        if (transferHistory.length === 0) {
+          qsHistoryTableBody.innerHTML = `
+            <tr id="qsEmptyHistoryRow">
+              <td colspan="7" class="py-8 text-center text-slate-400 dark:text-zinc-500 font-sans text-xs">
+                No transfers logged yet in this session.
+              </td>
+            </tr>
+          `;
+        } else {
+          transferHistory.forEach(r => {
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-slate-50 dark:hover:bg-zinc-800/40 transition-colors';
+            const isInc = r.direction === 'incoming';
+            const timeStr = new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            let actionBtn = `<span class="text-slate-400 dark:text-zinc-600">—</span>`;
+            if (r.downloadUrl) {
+              actionBtn = `
+                <a href="${r.downloadUrl}" download="${escapeHtml(r.fileName)}" class="px-2 py-1 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 text-[10px] font-sans font-medium transition cursor-pointer">
+                  Download
+                </a>
+              `;
+            } else if (r.textContent) {
+              actionBtn = `
+                <button onclick="navigator.clipboard.writeText('${escapeHtml(r.textContent)}').then(()=>showToast('Copied to clipboard','success'))" class="px-2 py-1 rounded bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 text-[10px] font-sans font-medium transition cursor-pointer">
+                  Copy
+                </button>
+              `;
+            }
+
+            tr.innerHTML = `
+              <td class="py-2.5 px-4"><span class="px-1.5 py-0.5 rounded text-[10px] bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 font-bold">${escapeHtml(r.type || 'FILE')}</span></td>
+              <td class="py-2.5 px-4"><span class="px-1.5 py-0.5 rounded text-[10px] ${isInc ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-blue-500/10 text-blue-600 dark:text-blue-400'} font-semibold">${isInc ? 'Inbound' : 'Outbound'}</span></td>
+              <td class="py-2.5 px-4 font-sans text-slate-800 dark:text-zinc-200 truncate max-w-[200px]" title="${escapeHtml(r.fileName)}">${escapeHtml(r.fileName)}</td>
+              <td class="py-2.5 px-4 text-slate-500 dark:text-zinc-400">${formatBytes(r.size)}</td>
+              <td class="py-2.5 px-4 text-slate-400 dark:text-zinc-500">${timeStr}</td>
+              <td class="py-2.5 px-4"><span class="text-emerald-500 font-semibold">${escapeHtml(r.status || 'Completed')}</span></td>
+              <td class="py-2.5 px-4 text-right">${actionBtn}</td>
+            `;
+            qsHistoryTableBody.appendChild(tr);
+          });
+        }
+      }
+
+      // 2. Direct Mesh Ledger Table
+      if (historyTableBody) {
+        historyTableBody.innerHTML = '';
+        if (transferHistory.length === 0) {
+          historyTableBody.innerHTML = `
+            <tr id="emptyHistoryRow">
+              <td colspan="6" class="py-8 text-center text-slate-400 dark:text-zinc-600 font-sans text-xs">
+                No transfer records in current session.
+              </td>
+            </tr>
+          `;
+          if (historyCountBadge) historyCountBadge.textContent = '· 0 records';
+        } else {
+          if (historyCountBadge) historyCountBadge.textContent = `· ${transferHistory.length} records`;
+          transferHistory.forEach(r => {
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-slate-50 dark:hover:bg-zinc-800/40 transition-colors';
+            const isInc = r.direction === 'incoming';
+            const timeStr = new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            let actionBtn = `<span class="text-slate-400 dark:text-zinc-600">—</span>`;
+            if (r.downloadUrl) {
+              actionBtn = `
+                <a href="${r.downloadUrl}" download="${escapeHtml(r.fileName)}" class="px-2 py-1 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 text-[10px] font-sans font-medium transition cursor-pointer">
+                  Save
+                </a>
+              `;
+            }
+
+            tr.innerHTML = `
+              <td class="py-2.5 px-4"><span class="px-1.5 py-0.5 rounded text-[10px] ${isInc ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-blue-500/10 text-blue-600 dark:text-blue-400'} font-semibold">${isInc ? 'RX (In)' : 'TX (Out)'}</span></td>
+              <td class="py-2.5 px-4 font-sans text-slate-800 dark:text-zinc-200 truncate max-w-[220px]" title="${escapeHtml(r.fileName)}">${escapeHtml(r.fileName)}</td>
+              <td class="py-2.5 px-4 text-slate-500 dark:text-zinc-400">${formatBytes(r.size)}</td>
+              <td class="py-2.5 px-4 text-slate-400 dark:text-zinc-500">${timeStr}</td>
+              <td class="py-2.5 px-4"><span class="text-emerald-500 font-semibold">${escapeHtml(r.status || 'Completed')}</span></td>
+              <td class="py-2.5 px-4 text-right">${actionBtn}</td>
+            `;
+            historyTableBody.appendChild(tr);
+          });
+        }
+      }
+    }
+
+    if (qsClearHistoryBtn) {
+      qsClearHistoryBtn.addEventListener('click', () => {
+        transferHistory.length = 0;
+        localStorage.removeItem('peerdrop_history');
+        renderHistoryTables();
+        showToast('Transfer history cleared', 'info');
+      });
+    }
+
+    if (clearHistoryBtn) {
+      clearHistoryBtn.addEventListener('click', () => {
+        transferHistory.length = 0;
+        localStorage.removeItem('peerdrop_history');
+        renderHistoryTables();
+        showToast('Transfer ledger cleared', 'info');
+      });
+    }
+
+    // ==========================================
+    // BATCH ZIP DOWNLOAD (JSZip)
+    // ==========================================
+    if (qsDownloadAllZipBtn) {
+      qsDownloadAllZipBtn.addEventListener('click', async () => {
+        if (qsLastReceivedBatch.length === 0) return;
+        if (typeof JSZip === 'undefined') {
+          showToast('ZIP engine loading...', 'info');
+          return;
+        }
+        showToast('Packaging files into ZIP archive...', 'info');
+        try {
+          const zip = new JSZip();
+          for (const item of qsLastReceivedBatch) {
+            const relPath = item.relativePath || item.name;
+            zip.file(relPath, item.blob);
+          }
+          const zipBlob = await zip.generateAsync({ type: 'blob' });
+          const url = URL.createObjectURL(zipBlob);
+          triggerBrowserDownload(url, `PeerDrop_Batch_${Date.now()}.zip`);
+          showToast('ZIP archive downloaded successfully!', 'success');
+          playSound('complete');
+        } catch (e) {
+          console.error('ZIP error:', e);
+          showToast('Failed to create ZIP archive', 'error');
+        }
+      });
+    }
+
+    // ==========================================
+    // DIRECT MESH STAGING & TRANSMISSION
+    // ==========================================
+    if (browseFilesBtn) browseFilesBtn.addEventListener('click', () => singleFileInput.click());
+    if (browseFolderBtn) browseFolderBtn.addEventListener('click', () => fileInput.click());
+    if (dropzone) {
+      dropzone.addEventListener('click', (e) => {
+        if (e.target.closest('#browseFilesBtn') || e.target.closest('#browseFolderBtn')) return;
+        singleFileInput.click();
+      });
+
+      ['dragenter', 'dragover'].forEach(name => {
+        dropzone.addEventListener(name, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropzone.classList.add('border-blue-500', 'bg-blue-500/10');
+        });
+      });
+      ['dragleave', 'drop'].forEach(name => {
+        dropzone.addEventListener(name, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropzone.classList.remove('border-blue-500', 'bg-blue-500/10');
+        });
+      });
+
+      dropzone.addEventListener('drop', async (e) => {
+        const dt = e.dataTransfer;
+        if (!dt) return;
+        if (dt.items && dt.items.length > 0 && typeof dt.items[0].webkitGetAsEntry === 'function') {
+          const promises = [];
+          for (let i = 0; i < dt.items.length; i++) {
+            const entry = dt.items[i].webkitGetAsEntry();
+            if (entry) promises.push(traverseFileTree(entry));
+          }
+          const lists = await Promise.all(promises);
+          lists.forEach(l => stagedFiles.push(...l));
+          renderStagedFiles();
+        } else if (dt.files && dt.files.length > 0) {
+          Array.from(dt.files).forEach(f => stagedFiles.push(f));
+          renderStagedFiles();
+        }
+      });
+    }
+
+    if (singleFileInput) {
+      singleFileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files.length > 0) {
+          Array.from(e.target.files).forEach(f => stagedFiles.push(f));
+          singleFileInput.value = '';
+          renderStagedFiles();
+        }
+      });
+    }
+
+    if (fileInput) {
+      fileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files.length > 0) {
+          Array.from(e.target.files).forEach(f => stagedFiles.push(f));
+          fileInput.value = '';
+          renderStagedFiles();
+        }
+      });
+    }
+
+    function renderStagedFiles() {
+      if (stagedFiles.length === 0) {
+        if (stagedFilesContainer) stagedFilesContainer.classList.add('hidden');
+        if (startTransferBtn) startTransferBtn.disabled = true;
+        return;
+      }
+
+      if (stagedFilesContainer) stagedFilesContainer.classList.remove('hidden');
+      if (stagedCount) stagedCount.textContent = stagedFiles.length;
+      const totalBytes = stagedFiles.reduce((acc, f) => acc + f.size, 0);
+      if (stagedTotalSize) stagedTotalSize.textContent = formatBytes(totalBytes);
+
+      if (stagedFilesList) {
+        stagedFilesList.innerHTML = '';
+        stagedFiles.forEach((file, idx) => {
+          const item = document.createElement('div');
+          item.className = 'flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-app-bg border border-slate-200 dark:border-zinc-800 text-xs';
+          item.innerHTML = `
+            <div class="flex items-center gap-2 overflow-hidden flex-1 mr-2">
+              ${getFileTypeIcon(file.name)}
+              <span class="text-slate-800 dark:text-zinc-200 font-medium truncate font-sans text-xs">${escapeHtml(file.name)}</span>
+              <span class="text-slate-400 dark:text-zinc-500 font-mono text-[11px] shrink-0">(${formatBytes(file.size)})</span>
+            </div>
+            <button onclick="removeMeshStagedFile(${idx})" class="text-slate-400 dark:text-zinc-500 hover:text-rose-500 p-0.5 transition cursor-pointer">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          `;
+          stagedFilesList.appendChild(item);
+        });
+      }
+
+      if (startTransferBtn) {
+        startTransferBtn.disabled = !activeConnection || !activeConnection.open;
+      }
+      if (transferReadyWarning) {
+        if (!activeConnection || !activeConnection.open) {
+          transferReadyWarning.classList.remove('hidden');
+        } else {
+          transferReadyWarning.classList.add('hidden');
+        }
+      }
+    }
+
+    window.removeMeshStagedFile = function(idx) {
+      stagedFiles.splice(idx, 1);
+      renderStagedFiles();
+    };
+
+    if (clearStagedBtn) {
+      clearStagedBtn.addEventListener('click', () => {
+        stagedFiles = [];
+        renderStagedFiles();
+      });
+    }
+
+    if (startTransferBtn) {
+      startTransferBtn.addEventListener('click', async () => {
+        if (!activeConnection || !activeConnection.open) {
+          showToast('Connect to a peer node above before transmitting', 'error');
+          return;
+        }
+        if (stagedFiles.length === 0) return;
+        const queue = [...stagedFiles];
+        stagedFiles = [];
+        renderStagedFiles();
+
+        for (const file of queue) {
+          await transmitFile(file);
+        }
+      });
+    }
+
+    if (quickTestBtn) {
+      quickTestBtn.addEventListener('click', () => {
+        if (currentMode === 'quickshare') {
+          if (qsTestTabWithCodeBtn) qsTestTabWithCodeBtn.click();
+        } else {
+          if (quickTestBannerBtn) quickTestBannerBtn.click();
+        }
+      });
+    }
+
+    if (quickTestBannerBtn) {
+      quickTestBannerBtn.addEventListener('click', () => {
+        if (!myPeerId) return;
+        const url = new URL(window.location.href);
+        url.searchParams.set('peer', myPeerId);
+        url.searchParams.delete('code');
+        window.open(url.toString(), '_blank');
+      });
+    }
+
+    // ==========================================
+    // RECURSIVE FOLDER & DRAG/DROP HELPERS
+    // ==========================================
+    async function traverseFileTree(entry, path = '') {
+      return new Promise((resolve) => {
+        if (!entry) return resolve([]);
+        if (entry.isFile) {
+          entry.file((file) => {
+            const relPath = path ? `${path}/${file.name}` : file.name;
+            try {
+              Object.defineProperty(file, 'webkitRelativePath', {
+                value: relPath,
+                writable: true,
+                configurable: true
+              });
+            } catch (err) {}
+            file.relativePath = relPath;
+            resolve([file]);
+          }, () => resolve([]));
+        } else if (entry.isDirectory) {
+          const dirReader = entry.createReader();
+          const dirFiles = [];
+          const readNextBatch = () => {
+            dirReader.readEntries(async (entries) => {
+              if (!entries || entries.length === 0) {
+                resolve(dirFiles);
+              } else {
+                const currentPath = path ? `${path}/${entry.name}` : entry.name;
+                for (const childEntry of entries) {
+                  const nested = await traverseFileTree(childEntry, currentPath);
+                  dirFiles.push(...nested);
+                }
+                readNextBatch();
+              }
+            }, () => resolve(dirFiles));
+          };
+          readNextBatch();
+        } else {
+          resolve([]);
+        }
+      });
+    }
+
+    // ==========================================
+    // QUICKSHARE TABS WORKFLOW
+    // ==========================================
+    function setQuickShareTab(tab) {
+      const tabs = [
+        { btn: qsTabFilesBtn, content: qsTabContentFiles },
+        { btn: qsTabFoldersBtn, content: qsTabContentFolders },
+        { btn: qsTabTextBtn, content: qsTabContentText },
+        { btn: qsTabHistoryBtn, content: qsTabContentHistory }
+      ];
+
+      tabs.forEach(t => {
+        t.btn.className = 'px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 cursor-pointer';
+        t.content.classList.add('hidden');
+      });
+
+      if (tab === 'files') {
+        qsTabFilesBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-500/30 font-semibold cursor-pointer';
+        qsTabContentFiles.classList.remove('hidden');
+      } else if (tab === 'folders') {
+        qsTabFoldersBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 bg-cyan-50 dark:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 font-semibold cursor-pointer';
+        qsTabContentFolders.classList.remove('hidden');
+      } else if (tab === 'text') {
+        qsTabTextBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border border-purple-500/30 font-semibold cursor-pointer';
+        qsTabContentText.classList.remove('hidden');
+      } else if (tab === 'history') {
+        qsTabHistoryBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold cursor-pointer';
+        qsTabContentHistory.classList.remove('hidden');
+      }
+    }
+
+    qsTabFilesBtn.addEventListener('click', () => setQuickShareTab('files'));
+    qsTabFoldersBtn.addEventListener('click', () => setQuickShareTab('folders'));
+    qsTabTextBtn.addEventListener('click', () => setQuickShareTab('text'));
+    qsTabHistoryBtn.addEventListener('click', () => setQuickShareTab('history'));
+
+    // QUICKSHARE FILES DROPZONE & STAGING
+    qsFilesDropzone.addEventListener('click', () => qsFilesInput.click());
+    qsFilesInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files.length > 0) {
+        Array.from(e.target.files).forEach(f => qsStagedFiles.push(f));
+        qsFilesInput.value = '';
+        renderQsStagedFiles();
+      }
+    });
+
+    ['dragenter', 'dragover'].forEach(name => {
+      qsFilesDropzone.addEventListener(name, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        qsFilesDropzone.classList.add('border-blue-500', 'bg-blue-500/10');
+      });
+    });
+    ['dragleave', 'drop'].forEach(name => {
+      qsFilesDropzone.addEventListener(name, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        qsFilesDropzone.classList.remove('border-blue-500', 'bg-blue-500/10');
+      });
+    });
+
+    qsFilesDropzone.addEventListener('drop', (e) => {
+      const dt = e.dataTransfer;
+      if (dt && dt.files && dt.files.length > 0) {
+        Array.from(dt.files).forEach(f => qsStagedFiles.push(f));
+        renderQsStagedFiles();
+      }
+    });
+
+    function renderQsStagedFiles() {
+      if (qsStagedFiles.length === 0) {
+        qsStagedFilesBox.classList.add('hidden');
+        qsSendFilesBtn.disabled = true;
+        return;
+      }
+
+      qsStagedFilesBox.classList.remove('hidden');
+      qsStagedFilesCount.textContent = qsStagedFiles.length;
+      const totalBytes = qsStagedFiles.reduce((acc, f) => acc + f.size, 0);
+      qsStagedFilesSize.textContent = formatBytes(totalBytes);
+
+      qsStagedFilesList.innerHTML = '';
+      qsStagedFiles.forEach((file, idx) => {
+        const item = document.createElement('div');
+        item.className = 'flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-app-bg border border-slate-200 dark:border-zinc-800 text-xs';
+        item.innerHTML = `
+          <div class="flex items-center gap-2 overflow-hidden flex-1 mr-2">
+            ${getFileTypeIcon(file.name)}
+            <span class="text-slate-800 dark:text-zinc-200 font-medium truncate font-sans text-xs">${escapeHtml(file.name)}</span>
+            <span class="text-slate-400 dark:text-zinc-500 font-mono text-[11px] shrink-0">(${formatBytes(file.size)})</span>
+          </div>
+          <button onclick="removeQsStagedFile(${idx})" class="text-slate-400 dark:text-zinc-500 hover:text-rose-500 p-0.5 transition cursor-pointer">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        `;
+        qsStagedFilesList.appendChild(item);
+      });
+
+      qsSendFilesBtn.disabled = !activeConnection || !activeConnection.open;
+    }
+
+    window.removeQsStagedFile = function(idx) {
+      qsStagedFiles.splice(idx, 1);
+      renderQsStagedFiles();
+    };
+
+    qsClearStagedFilesBtn.addEventListener('click', () => {
+      qsStagedFiles = [];
+      renderQsStagedFiles();
+    });
+
+    qsSendFilesBtn.addEventListener('click', async () => {
+      if (!activeConnection || !activeConnection.open) {
+        showToast('Connect a device first using a 6-digit code', 'error');
+        return;
+      }
+      if (qsStagedFiles.length === 0) return;
+
+      const queue = [...qsStagedFiles];
+      const totalBytes = queue.reduce((acc, f) => acc + f.size, 0);
+
+      const accepted = await requestTransferConsent({
+        payloadType: 'files',
+        totalFiles: queue.length,
+        totalSize: totalBytes,
+        fileList: queue.slice(0, 10).map(f => ({ name: f.name, size: f.size })),
+        moreCount: Math.max(0, queue.length - 10)
+      });
+
+      if (!accepted) return;
+
+      qsStagedFiles = [];
+      renderQsStagedFiles();
+
+      for (const file of queue) {
+        await transmitFile(file);
+      }
+    });
+
+    // QUICKSHARE FOLDERS DROPZONE & STAGING
+    qsFoldersDropzone.addEventListener('click', () => qsFolderInput.click());
+    qsFolderInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files.length > 0) {
+        Array.from(e.target.files).forEach(f => qsStagedFolderFiles.push(f));
+        qsFolderInput.value = '';
+        renderQsStagedFolder();
+      }
+    });
+
+    ['dragenter', 'dragover'].forEach(name => {
+      qsFoldersDropzone.addEventListener(name, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        qsFoldersDropzone.classList.add('border-cyan-500', 'bg-cyan-500/10');
+      });
+    });
+    ['dragleave', 'drop'].forEach(name => {
+      qsFoldersDropzone.addEventListener(name, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        qsFoldersDropzone.classList.remove('border-cyan-500', 'bg-cyan-500/10');
+      });
+    });
+
+    qsFoldersDropzone.addEventListener('drop', async (e) => {
+      const dt = e.dataTransfer;
+      if (!dt) return;
+
+      const items = dt.items;
+      if (items && items.length > 0 && typeof items[0].webkitGetAsEntry === 'function') {
+        const filePromises = [];
+        for (let i = 0; i < items.length; i++) {
+          const entry = items[i].webkitGetAsEntry();
+          if (entry) filePromises.push(traverseFileTree(entry));
+        }
+        const results = await Promise.all(filePromises);
+        for (const list of results) {
+          qsStagedFolderFiles.push(...list);
+        }
+        renderQsStagedFolder();
+        return;
+      }
+
+      if (dt.files && dt.files.length > 0) {
+        Array.from(dt.files).forEach(f => qsStagedFolderFiles.push(f));
+        renderQsStagedFolder();
+      }
+    });
+
+    function renderQsStagedFolder() {
+      if (qsStagedFolderFiles.length === 0) {
+        qsStagedFolderBox.classList.add('hidden');
+        qsSendFolderBtn.disabled = true;
+        return;
+      }
+
+      qsStagedFolderBox.classList.remove('hidden');
+      qsStagedFolderFileCount.textContent = qsStagedFolderFiles.length;
+      const totalBytes = qsStagedFolderFiles.reduce((acc, f) => acc + f.size, 0);
+      qsStagedFolderSize.textContent = formatBytes(totalBytes);
+
+      qsStagedFolderList.innerHTML = '';
+      qsStagedFolderFiles.forEach((file, idx) => {
+        const displayPath = file.webkitRelativePath || file.relativePath || file.name;
+        const item = document.createElement('div');
+        item.className = 'flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-app-bg border border-slate-200 dark:border-zinc-800 text-xs';
+        item.innerHTML = `
+          <div class="flex items-center gap-2 overflow-hidden flex-1 mr-2">
+            ${getFileTypeIcon(file.name)}
+            <span class="text-slate-800 dark:text-zinc-200 font-mono text-xs truncate" title="${escapeHtml(displayPath)}">${escapeHtml(displayPath)}</span>
+            <span class="text-slate-400 dark:text-zinc-500 font-mono text-[11px] shrink-0">(${formatBytes(file.size)})</span>
+          </div>
+          <button onclick="removeQsStagedFolderFile(${idx})" class="text-slate-400 dark:text-zinc-500 hover:text-rose-500 p-0.5 transition cursor-pointer">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        `;
+        qsStagedFolderList.appendChild(item);
+      });
+
+      qsSendFolderBtn.disabled = !activeConnection || !activeConnection.open;
+    }
+
+    window.removeQsStagedFolderFile = function(idx) {
+      qsStagedFolderFiles.splice(idx, 1);
+      renderQsStagedFolder();
+    };
+
+    qsClearStagedFolderBtn.addEventListener('click', () => {
+      qsStagedFolderFiles = [];
+      renderQsStagedFolder();
+    });
+
+    qsSendFolderBtn.addEventListener('click', async () => {
+      if (!activeConnection || !activeConnection.open) {
+        showToast('Connect a device first using a 6-digit code', 'error');
+        return;
+      }
+      if (qsStagedFolderFiles.length === 0) return;
+
+      const queue = [...qsStagedFolderFiles];
+      const totalBytes = queue.reduce((acc, f) => acc + f.size, 0);
+
+      const firstPath = queue[0].webkitRelativePath || queue[0].relativePath || '';
+      const folderName = firstPath.includes('/') ? firstPath.split('/')[0] : 'Directory';
+
+      const accepted = await requestTransferConsent({
+        payloadType: 'folder',
+        folderName: folderName,
+        totalFiles: queue.length,
+        totalSize: totalBytes,
+        fileList: queue.slice(0, 10).map(f => ({
+          name: f.webkitRelativePath || f.relativePath || f.name,
+          size: f.size
+        })),
+        moreCount: Math.max(0, queue.length - 10)
+      });
+
+      if (!accepted) return;
+
+      qsStagedFolderFiles = [];
+      renderQsStagedFolder();
+
+      for (const file of queue) {
+        await transmitFile(file);
+      }
+    });
+
+    // ==========================================
+    // INITIAL BOOTSTRAP FOR DIRECT MESH
+    // ==========================================
+    function initPeer(customId = null) {
+      if (peer) {
+        try { peer.destroy(); } catch (e) {}
+      }
+
+      const generatedId = customId || generateCleanId();
+      myPeerIdInput.value = 'Binding WebRTC...';
+      idLoadingSpinner.classList.remove('hidden');
+
+      peer = new Peer(generatedId, {
+        config: iceConfig,
+        debug: 1
+      });
+
+      peer.on('open', (id) => {
+        myPeerId = id;
+        myPeerIdInput.value = id;
+        idLoadingSpinner.classList.add('hidden');
+        updateConnectionStatus('disconnected');
+        showToast('Direct Node ID active', 'info');
+      });
+
+      peer.on('connection', (conn) => {
+        handleIncomingConnection(conn);
+      });
+
+      peer.on('error', (err) => {
+        console.error('PeerJS error:', err);
+        idLoadingSpinner.classList.add('hidden');
+        if (err.type === 'peer-unavailable') {
+          showToast(`Target node "${remotePeerIdInput.value.trim()}" is offline`, 'error');
+          updateConnectionStatus('disconnected');
+        } else if (err.type === 'unavailable-id') {
+          initPeer();
+        } else {
+          showToast(`Signal notice: ${err.message || err.type}`, 'error');
+          updateConnectionStatus('disconnected');
+        }
+      });
+    }
+
+    // ==========================================
+    // URL QUERY PARAMETER HANDLING
+    // ==========================================
+    function checkUrlForParameters() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const codeParam = urlParams.get('code');
+      const peerParam = urlParams.get('peer');
+
+      if (codeParam && codeParam.length === 6) {
+        switchMode('quickshare');
+        codeParam.split('').forEach((d, i) => {
+          if (qsDigitInputs[i]) qsDigitInputs[i].value = d;
+        });
+        checkQsCodeFilled();
+        showToast(`Auto-populated QuickShare code: ${codeParam}`, 'info');
+
+        // Auto-connect to qs-XXXXXX
+        setTimeout(() => {
+          if (!activeConnection) {
+            connectToRemotePeer(`qs-${codeParam}`);
+          }
+        }, 600);
+      } else if (peerParam && peerParam !== myPeerId) {
+        switchMode('directmesh');
+        remotePeerIdInput.value = peerParam;
+        showToast(`Auto-paired with peer: ${peerParam}`, 'info');
+
+        setTimeout(() => {
+          if (!activeConnection && peer && !peer.destroyed) {
+            connectToRemotePeer(peerParam);
+          }
+        }, 600);
+      }
+    }
+
+    // ==========================================
+    // REAL-LIFE FEATURES & SHORTCUTS SETUP
+    // ==========================================
+    function setupRealLifeFeatures() {
+      // Sound Toggle
+      if (soundToggleBtn) {
+        soundToggleBtn.addEventListener('click', () => {
+          soundEnabled = !soundEnabled;
+          localStorage.setItem('peerdrop_sound', soundEnabled ? 'true' : 'false');
+          updateSoundUi();
+          if (soundEnabled) playSound('click');
+          showToast(soundEnabled ? 'Audio feedback enabled' : 'Audio feedback muted', 'info');
+        });
+      }
+
+      // Device Name Badge & Modal
+      if (myDeviceBadgeBtn) {
+        myDeviceBadgeBtn.addEventListener('click', () => {
+          playSound('click');
+          if (deviceNameCustomInput) deviceNameCustomInput.value = getDeviceName();
+          if (deviceRenameModal) deviceRenameModal.classList.remove('hidden');
+          if (deviceNameCustomInput) deviceNameCustomInput.focus();
+        });
+      }
+
+      if (cancelDeviceRenameBtn) {
+        cancelDeviceRenameBtn.addEventListener('click', () => {
+          if (deviceRenameModal) deviceRenameModal.classList.add('hidden');
+        });
+      }
+
+      if (saveDeviceRenameBtn) {
+        saveDeviceRenameBtn.addEventListener('click', () => {
+          if (!deviceNameCustomInput) return;
+          const val = deviceNameCustomInput.value.trim();
+          if (val) {
+            localStorage.setItem('peerdrop_device_name', val);
+            updateDeviceNameUi();
+            showToast(`Device name set to "${val}"`, 'success');
+            playSound('complete');
+            if (activeConnection && activeConnection.open) {
+              activeConnection.send({
+                type: 'DEVICE_HELLO',
+                deviceName: val,
+                time: Date.now()
+              });
+            }
+          }
+          if (deviceRenameModal) deviceRenameModal.classList.add('hidden');
+        });
+      }
+
+      if (deviceNameCustomInput) {
+        deviceNameCustomInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            if (saveDeviceRenameBtn) saveDeviceRenameBtn.click();
+          }
+        });
+      }
+
+      // Guide Modal
+      if (guideModalBtn) {
+        guideModalBtn.addEventListener('click', () => {
+          playSound('click');
+          if (guideModal) guideModal.classList.remove('hidden');
+        });
+      }
+      if (closeGuideModalBtn) {
+        closeGuideModalBtn.addEventListener('click', () => {
+          if (guideModal) guideModal.classList.add('hidden');
+        });
+      }
+      if (closeGuideModalBottomBtn) {
+        closeGuideModalBottomBtn.addEventListener('click', () => {
+          if (guideModal) guideModal.classList.add('hidden');
+        });
+      }
+
+      // Close modals on Escape key or backdrop click
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          if (guideModal && !guideModal.classList.contains('hidden')) guideModal.classList.add('hidden');
+          if (deviceRenameModal && !deviceRenameModal.classList.contains('hidden')) deviceRenameModal.classList.add('hidden');
+          if (qrModal && !qrModal.classList.contains('hidden')) qrModal.classList.add('hidden');
+          if (qsConsentModal && !qsConsentModal.classList.contains('hidden')) qsConsentModal.classList.add('hidden');
+        }
+      });
+
+      [guideModal, deviceRenameModal, qsConsentModal].forEach(modal => {
+        if (modal) {
+          modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.classList.add('hidden');
+          });
+        }
+      });
+
+      // Full Window Drag & Drop Overlay
+      let dragCounter = 0;
+      window.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        dragCounter++;
+        if (e.dataTransfer && e.dataTransfer.types && Array.from(e.dataTransfer.types).includes('Files')) {
+          if (fullWindowDropOverlay) fullWindowDropOverlay.classList.remove('hidden');
+        }
+      });
+      window.addEventListener('dragover', (e) => {
+        e.preventDefault();
+      });
+      window.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dragCounter--;
+        if (dragCounter <= 0) {
+          dragCounter = 0;
+          if (fullWindowDropOverlay) fullWindowDropOverlay.classList.add('hidden');
+        }
+      });
+      window.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        dragCounter = 0;
+        if (fullWindowDropOverlay) fullWindowDropOverlay.classList.add('hidden');
+
+        const dt = e.dataTransfer;
+        if (!dt) return;
+
+        let droppedFiles = [];
+        if (dt.items && dt.items.length > 0 && typeof dt.items[0].webkitGetAsEntry === 'function') {
+          const promises = [];
+          for (let i = 0; i < dt.items.length; i++) {
+            const entry = dt.items[i].webkitGetAsEntry();
+            if (entry) promises.push(traverseFileTree(entry));
+          }
+          const lists = await Promise.all(promises);
+          droppedFiles = lists.flat();
+        } else if (dt.files && dt.files.length > 0) {
+          droppedFiles = Array.from(dt.files);
+        }
+
+        if (droppedFiles.length === 0) return;
+
+        playSound('click');
+        if (currentMode === 'quickshare') {
+          droppedFiles.forEach(f => qsStagedFiles.push(f));
+          setQuickShareTab('files');
+          renderQsStagedFiles();
+          showToast(`Staged ${droppedFiles.length} item(s) for QuickShare`, 'info');
+        } else {
+          droppedFiles.forEach(f => stagedFiles.push(f));
+          renderStagedFiles();
+          showToast(`Staged ${droppedFiles.length} item(s) for Direct Mesh`, 'info');
+        }
+      });
+    }
+
+    // ==========================================
+    // INITIAL BOOTSTRAP
+    // ==========================================
+    window.addEventListener('DOMContentLoaded', () => {
+      initTheme();
+      updateSoundUi();
+      updateDeviceNameUi();
+      loadPersistedHistory();
+      setupRealLifeFeatures();
+      setupQuickShareHostCode();
+      checkUrlForParameters();
+    });
+  </script>
+</body>
+</html>
