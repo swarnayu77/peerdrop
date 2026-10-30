@@ -11,3 +11,32 @@ h1, h2, h3, h4, h5, h6, .font-heading {
   letter-spacing: 0.03em;
   line-height: 1.25;
 }
+
+@media (max-width: 640px) {
+  h1, h2, h3, h4, h5, h6, .font-heading {
+    letter-spacing: 0.01em;
+    word-break: break-word;
+    hyphens: auto;
+  }
+}
+
+/* Touch and mobile ergonomics */
+html {
+  -webkit-tap-highlight-color: transparent;
+  scroll-behavior: smooth;
+}
+
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Hide scrollbar for clean horizontal tab carousels */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
