@@ -12,6 +12,9 @@
 
   <link rel="icon" type="image/png" href="/assets/aistudio/image_ffae114f.png" />
   <link rel="apple-touch-icon" href="/assets/aistudio/image_ffae114f.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="PeerDrop" />
 
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -46,7 +49,7 @@
           },
           fontFamily: {
             sans: ["'Plus Jakarta Sans'", "-apple-system", "BlinkMacSystemFont", "'Segoe UI'", "sans-serif"],
-            heading: ["'Outfit'", "-apple-system", "BlinkMacSystemFont", "'Segoe UI'", "sans-serif"],
+            heading: ["'Bungee Spice'", "'Bungee'", "-apple-system", "BlinkMacSystemFont", "'Segoe UI'", "sans-serif"],
             mono: ["'JetBrains Mono'", "ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "monospace"]
           }
         }
@@ -54,10 +57,10 @@
     };
   </script>
 
-  <!-- Typography: Outfit for Headings & Brand, Plus Jakarta Sans for UI, JetBrains Mono for Data Telemetry -->
+  <!-- Typography: Bungee Spice (+ solid Bungee fallback) for Headings & Main Callouts, Plus Jakarta Sans for UI, JetBrains Mono for Data Telemetry -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Bungee+Spice&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <!-- PeerJS CDN -->
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
@@ -71,7 +74,7 @@
   <style>
     :root {
       --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      --font-heading: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-heading: 'Bungee Spice', 'Bungee', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     }
 
@@ -87,11 +90,14 @@
       text-rendering: optimizeLegibility;
     }
 
-    /* Headings styled with Outfit geometric display font */
-    h1, h2, h3, h4, h5, h6, .font-heading {
+    /* Headings & Main Callouts styled with Bungee Spice (400-only COLRv1, no faux-bold) */
+    h1, h2, h3, h4, h5, h6, .font-heading, .font-heading *:not(.font-mono), .brand-title {
       font-family: var(--font-heading) !important;
-      font-weight: 700;
-      letter-spacing: -0.02em;
+      font-weight: 400 !important;
+      font-synthesis: none;
+      font-palette: normal;
+      letter-spacing: 0.02em;
+      line-height: 1.2;
       text-wrap: balance;
       writing-mode: horizontal-tb !important;
       text-orientation: mixed !important;
@@ -100,19 +106,17 @@
       visibility: visible !important;
     }
 
-    /* High contrast heading colors */
-    .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6, .dark .font-heading {
-      color: #f8fafc !important;
+    /* High contrast fallback colors for browsers falling back from COLRv1 to solid Bungee */
+    .dark :is(h1, h2, h3, h4, h5, h6, .font-heading, .brand-title):not(.text-white):not([class*="text-blue-"]):not([class*="text-emerald-"]):not([class*="text-cyan-"]):not([class*="text-rose-"]) {
+      color: #f8fafc;
     }
-    html:not(.dark) h1, html:not(.dark) h2, html:not(.dark) h3, html:not(.dark) h4, html:not(.dark) h5, html:not(.dark) h6, html:not(.dark) .font-heading {
-      color: #0f172a !important;
+    html:not(.dark) :is(h1, h2, h3, h4, h5, h6, .font-heading, .brand-title):not(.text-white):not([class*="text-blue-"]):not([class*="text-emerald-"]):not([class*="text-cyan-"]):not([class*="text-rose-"]) {
+      color: #0f172a;
     }
 
-    /* Crisp wordmark styling */
+    /* Crisp horizontal wordmark */
     .brand-title {
-      font-family: var(--font-heading) !important;
-      font-weight: 800 !important;
-      letter-spacing: -0.025em !important;
+      letter-spacing: 0.03em !important;
       white-space: nowrap !important;
       word-break: keep-all !important;
       overflow-wrap: normal !important;
@@ -209,14 +213,13 @@
     }
 
     @media (max-width: 640px) {
-      h1, h2, h3, h4, h5, h6 {
-        letter-spacing: -0.015em;
+      h1, h2, h3, h4, h5, h6, .font-heading {
+        letter-spacing: 0.01em;
         word-break: normal;
         overflow-wrap: break-word;
       }
-      .font-heading {
-        letter-spacing: -0.015em;
-        word-break: normal;
+      .brand-title {
+        letter-spacing: 0.02em !important;
       }
     }
 
@@ -281,22 +284,22 @@
             <img src="/assets/aistudio/image_ffae114f.png" alt="PeerDrop Logo" class="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl object-contain shadow-md shadow-cyan-500/25 border border-cyan-500/40 transition-transform duration-200 group-hover:scale-105 bg-slate-950 p-0.5 shrink-0" />
             <span class="absolute -bottom-0.5 -right-0.5 w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-app-bg"></span>
           </div>
-          <span class="text-base sm:text-lg font-heading tracking-wide whitespace-nowrap shrink-0 select-none brand-title">PeerDrop</span>
+          <span class="text-sm sm:text-lg font-heading whitespace-nowrap shrink-0 select-none brand-title">PeerDrop</span>
         </div>
 
         <!-- Mode Segmented Tabs (Desktop/Tablet) -->
         <nav class="hidden md:flex items-center p-1 rounded-lg bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-xs">
-          <button id="navTabQuickShare" class="px-3.5 py-1.5 rounded-md font-bold text-xs transition flex items-center gap-1.5 bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 shadow-sm cursor-pointer">
+          <button id="navTabQuickShare" class="px-3.5 py-1.5 rounded-md font-heading text-[11px] transition flex items-center gap-1.5 bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 shadow-sm cursor-pointer">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
             </svg>
-            <span>QuickShare (Code)</span>
+            <span>QuickShare</span>
           </button>
-          <button id="navTabDirectMesh" class="px-3.5 py-1.5 rounded-md font-semibold text-xs transition flex items-center gap-1.5 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 cursor-pointer">
+          <button id="navTabDirectMesh" class="px-3.5 py-1.5 rounded-md font-heading text-[11px] transition flex items-center gap-1.5 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 cursor-pointer">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
             </svg>
-            <span>Direct Mesh ID</span>
+            <span>Direct Mesh</span>
           </button>
         </nav>
       </div>
@@ -400,7 +403,7 @@
           <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
         </div>
         <div class="min-w-0 flex-1">
-          <div class="font-bold text-slate-900 dark:text-white text-xs sm:text-sm leading-tight">100% P2P Encrypted</div>
+          <div class="font-heading text-slate-900 dark:text-white text-[11px] sm:text-xs leading-tight">100% P2P Encrypted</div>
           <div class="text-[11px] text-slate-600 dark:text-zinc-300 font-medium leading-tight mt-0.5">DTLS · SRTP WebRTC</div>
         </div>
       </div>
@@ -409,7 +412,7 @@
           <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
         </div>
         <div class="min-w-0 flex-1">
-          <div class="font-bold text-slate-900 dark:text-white text-xs sm:text-sm leading-tight">Zero Cloud Storage</div>
+          <div class="font-heading text-slate-900 dark:text-white text-[11px] sm:text-xs leading-tight">Zero Cloud Storage</div>
           <div class="text-[11px] text-slate-600 dark:text-zinc-300 font-medium leading-tight mt-0.5">Direct device memory</div>
         </div>
       </div>
@@ -418,7 +421,7 @@
           <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
         </div>
         <div class="min-w-0 flex-1">
-          <div class="font-bold text-slate-900 dark:text-white text-xs sm:text-sm leading-tight">No File Size Limits</div>
+          <div class="font-heading text-slate-900 dark:text-white text-[11px] sm:text-xs leading-tight">No File Size Limits</div>
           <div class="text-[11px] text-slate-600 dark:text-zinc-300 font-medium leading-tight mt-0.5">64KB stream buffer</div>
         </div>
       </div>
@@ -427,7 +430,7 @@
           <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
         </div>
         <div class="min-w-0 flex-1">
-          <div class="font-bold text-slate-900 dark:text-white text-xs sm:text-sm leading-tight">Cross-Platform</div>
+          <div class="font-heading text-slate-900 dark:text-white text-[11px] sm:text-xs leading-tight">Cross-Platform</div>
           <div class="text-[11px] text-slate-600 dark:text-zinc-300 font-medium leading-tight mt-0.5">iOS, Android, PC, Mac</div>
         </div>
       </div>
@@ -440,7 +443,7 @@
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
         </div>
         <div class="min-w-0">
-          <div class="font-bold text-slate-900 dark:text-white text-[11px] leading-tight">100% P2P</div>
+          <div class="font-heading text-slate-900 dark:text-white text-[10px] leading-tight">100% P2P</div>
           <div class="text-[10px] text-slate-600 dark:text-zinc-300 font-medium leading-tight">Direct WebRTC</div>
         </div>
       </div>
@@ -449,7 +452,7 @@
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
         </div>
         <div class="min-w-0">
-          <div class="font-bold text-slate-900 dark:text-white text-[11px] leading-tight">Zero Cloud</div>
+          <div class="font-heading text-slate-900 dark:text-white text-[10px] leading-tight">Zero Cloud</div>
           <div class="text-[10px] text-slate-600 dark:text-zinc-300 font-medium leading-tight">Direct RAM</div>
         </div>
       </div>
@@ -458,7 +461,7 @@
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
         </div>
         <div class="min-w-0">
-          <div class="font-bold text-slate-900 dark:text-white text-[11px] leading-tight">Unlimited Size</div>
+          <div class="font-heading text-slate-900 dark:text-white text-[10px] leading-tight">No Limits</div>
           <div class="text-[10px] text-slate-600 dark:text-zinc-300 font-medium leading-tight">64KB Stream</div>
         </div>
       </div>
@@ -467,7 +470,7 @@
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
         </div>
         <div class="min-w-0">
-          <div class="font-bold text-slate-900 dark:text-white text-[11px] leading-tight">Cross-Device</div>
+          <div class="font-heading text-slate-900 dark:text-white text-[10px] leading-tight">Any Device</div>
           <div class="text-[10px] text-slate-600 dark:text-zinc-300 font-medium leading-tight">iOS · Android · PC</div>
         </div>
       </div>
@@ -486,19 +489,19 @@
             <p class="text-[11px] font-mono font-bold uppercase tracking-[0.14em] text-blue-600 dark:text-blue-400 mb-1.5">
               Code-Based Device-to-Device Sharing
             </p>
-            <h2 class="text-2xl sm:text-3xl font-heading font-bold tracking-tight text-slate-900 dark:text-white">QuickShare Engine</h2>
+            <h1 class="text-xl sm:text-3xl font-heading text-slate-900 dark:text-white">QuickShare Engine</h1>
             <p class="text-xs sm:text-sm text-slate-600 dark:text-zinc-300 mt-1 max-w-md mx-auto leading-relaxed">
               Share files, folders, and text directly between any two devices using a temporary 6-digit connection code.
             </p>
           </div>
 
           <!-- Mobile Segmented Deck Switcher (Share Code vs Enter Code) -->
-          <div class="flex md:hidden p-1 rounded-xl bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 mb-3 text-xs font-semibold">
-            <button id="mobileQsTabShare" class="flex-1 min-h-[44px] py-2 px-2 rounded-lg bg-blue-600 text-white font-bold flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer active:scale-95 whitespace-nowrap">
+          <div class="flex md:hidden p-1 rounded-xl bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 mb-3 text-xs">
+            <button id="mobileQsTabShare" class="flex-1 min-h-[44px] py-2 px-2 rounded-lg bg-white dark:bg-zinc-800 border border-blue-500/40 text-blue-600 dark:text-blue-400 font-heading text-[11px] flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer active:scale-95 whitespace-nowrap">
               <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
               <span>Share Code</span>
             </button>
-            <button id="mobileQsTabConnect" class="flex-1 min-h-[44px] py-2 px-2 rounded-lg text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-95 whitespace-nowrap">
+            <button id="mobileQsTabConnect" class="flex-1 min-h-[44px] py-2 px-2 rounded-lg text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white font-heading text-[11px] flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-95 whitespace-nowrap">
               <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/></svg>
               <span>Enter Code</span>
             </button>
@@ -513,7 +516,7 @@
                 <div class="flex items-center justify-between mb-2.5">
                   <div class="flex items-center gap-2">
                     <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
-                    <h3 class="text-sm sm:text-base font-heading font-semibold tracking-tight text-slate-900 dark:text-white">Device A · Share Code</h3>
+                    <h2 class="text-xs sm:text-sm font-heading text-slate-900 dark:text-white">Device A · Share Code</h2>
                   </div>
                   <span id="qsCodeTimerBadge" class="text-xs font-mono text-slate-700 dark:text-zinc-200 flex items-center gap-1 font-semibold tabular-nums">
                     <svg class="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -529,7 +532,7 @@
                 <!-- 6-Digit Code Display -->
                 <div class="p-3.5 sm:p-4 rounded-xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-center shadow-inner mb-3 relative group">
                   <div class="text-[11px] uppercase font-mono font-semibold text-slate-500 dark:text-zinc-400 mb-1 tracking-wider">6-Digit Connection Code</div>
-                  <div id="qsGeneratedCodeDisplay" class="font-mono text-3xl sm:text-5xl font-extrabold tracking-wider sm:tracking-widest text-blue-600 dark:text-blue-400 select-all my-1 tabular-nums">
+                  <div id="qsGeneratedCodeDisplay" class="font-heading text-2xl sm:text-4xl tracking-wider sm:tracking-widest text-blue-600 dark:text-blue-400 select-all my-1 tabular-nums">
                     ------
                   </div>
                   <p class="text-xs text-slate-500 dark:text-zinc-400 font-medium mt-1">Expires automatically after 5 minutes</p>
@@ -582,7 +585,7 @@
                 <div class="flex items-center justify-between mb-2.5">
                   <div class="flex items-center gap-2">
                     <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                    <h3 class="text-sm sm:text-base font-heading font-semibold tracking-tight text-slate-900 dark:text-white">Device B · Connect Code</h3>
+                    <h2 class="text-xs sm:text-sm font-heading text-slate-900 dark:text-white">Device B · Connect Code</h2>
                   </div>
                   <span class="text-xs font-mono text-slate-600 dark:text-zinc-300 font-semibold">Pairing Input</span>
                 </div>
@@ -634,7 +637,7 @@
             </span>
             <div class="truncate">
               <div class="flex items-center gap-2">
-                <h3 class="text-sm sm:text-base font-heading tracking-wide">Device Connected</h3>
+                <h3 class="text-xs sm:text-sm font-heading">Device Connected</h3>
                 <span class="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 font-bold">P2P Live</span>
               </div>
               <p class="text-xs text-slate-700 dark:text-zinc-200 mt-0.5">
@@ -706,8 +709,8 @@
               </svg>
             </div>
 
-            <p class="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-1">
-              <span class="hidden sm:inline">Drag & Drop files here, or </span><span class="text-blue-600 dark:text-blue-400 underline decoration-blue-500/40">Tap to browse files</span>
+            <p class="text-xs sm:text-sm font-heading text-slate-900 dark:text-white mb-1.5">
+              <span class="hidden sm:inline">Drag &amp; Drop Files, or </span><span class="text-blue-600 dark:text-blue-400 underline decoration-blue-500/40">Tap to Browse Files</span>
             </p>
             <p class="text-xs text-slate-600 dark:text-zinc-300 max-w-sm mx-auto font-medium">
               Photos, videos, PDFs, ZIPs, documents, and archives. Direct memory-chunked transfer.
@@ -747,8 +750,8 @@
               </svg>
             </div>
 
-            <p class="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-1">
-              <span class="hidden sm:inline">Drop an entire folder here, or </span><span class="text-cyan-600 dark:text-cyan-400 underline decoration-cyan-500/40">Tap to choose folder</span>
+            <p class="text-xs sm:text-sm font-heading text-slate-900 dark:text-white mb-1.5">
+              <span class="hidden sm:inline">Drop a Folder, or </span><span class="text-cyan-600 dark:text-cyan-400 underline decoration-cyan-500/40">Tap to Choose Folder</span>
             </p>
             <p class="text-xs text-slate-600 dark:text-zinc-300 max-w-sm mx-auto font-medium">
               Preserves nested subfolders and directory hierarchies. All files streamed individually.
@@ -844,7 +847,7 @@
         <div class="flex items-center justify-between gap-2">
           <div class="flex items-center gap-2">
             <span class="w-2.5 h-2.5 rounded-full bg-cyan-500"></span>
-            <h3 class="text-sm sm:text-base font-heading font-semibold text-slate-900 dark:text-white">Live Transmission Telemetry</h3>
+            <h3 class="text-xs sm:text-sm font-heading text-slate-900 dark:text-white">Live Transmission Telemetry</h3>
           </div>
           <span id="qsTelemetryStatusBadge" class="text-xs font-mono text-slate-700 dark:text-zinc-200 px-2.5 py-0.5 rounded bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 font-semibold">
             Idle
@@ -935,7 +938,7 @@
           <div class="space-y-1">
             <div class="flex items-center gap-2">
               <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 text-xs font-bold">i</span>
-              <h3 class="text-sm sm:text-base font-heading font-semibold tracking-tight text-slate-900 dark:text-white">Direct Node ID Mesh Transfer</h3>
+              <h3 class="text-xs sm:text-sm font-heading text-slate-900 dark:text-white">Direct Node ID Mesh Transfer</h3>
             </div>
             <p class="text-xs text-slate-600 dark:text-zinc-300 font-medium">
               Direct connection via persistent custom or random Peer IDs for advanced workflows.
@@ -1067,7 +1070,7 @@
             <div class="flex items-center justify-between mb-3">
               <div class="flex items-center gap-2">
                 <span class="w-2 h-2 rounded-full bg-blue-500"></span>
-                <h2 class="text-sm sm:text-base font-heading tracking-wide">Mesh Ingestion</h2>
+                <h2 class="text-xs sm:text-sm font-heading">Mesh Ingestion</h2>
               </div>
               <span id="dropzoneReadyBadge" class="text-[11px] font-mono text-slate-700 dark:text-zinc-200 font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800">
                 Standby
@@ -1085,8 +1088,8 @@
                 </svg>
               </div>
 
-              <p class="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-1">
-                Drop files or whole folders here, or
+              <p class="text-xs sm:text-sm font-heading text-slate-900 dark:text-white mb-1.5">
+                Drop Files or Whole Folders Here
               </p>
               <div class="flex flex-wrap items-center justify-center gap-2 mt-2">
                 <button type="button" id="browseFilesBtn" class="px-3.5 py-2.5 min-h-[44px] rounded-lg bg-slate-200 dark:bg-zinc-800 hover:bg-slate-300 dark:hover:bg-zinc-700 text-slate-900 dark:text-white text-xs font-bold border border-slate-300 dark:border-zinc-700 transition flex items-center gap-1.5 cursor-pointer active:scale-95">
@@ -1155,7 +1158,7 @@
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
                 <span class="w-2.5 h-2.5 rounded-full bg-cyan-500"></span>
-                <h2 class="text-sm sm:text-base font-heading font-semibold tracking-tight text-slate-900 dark:text-white">Mesh Telemetry</h2>
+                <h2 class="text-xs sm:text-sm font-heading text-slate-900 dark:text-white">Mesh Telemetry</h2>
               </div>
               <span id="activeTransfersCount" class="text-[11px] font-mono text-slate-700 dark:text-zinc-200 font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800">
                 Idle
@@ -1217,7 +1220,7 @@
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
             <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-            <h2 class="text-sm sm:text-base font-heading font-semibold tracking-tight text-slate-900 dark:text-white">Mesh Session Ledger</h2>
+            <h2 class="text-xs sm:text-sm font-heading text-slate-900 dark:text-white">Mesh Session Ledger</h2>
             <span id="historyCountBadge" class="text-xs font-mono text-slate-600 dark:text-zinc-300 font-semibold tabular-nums">· 0 records</span>
           </div>
           <button id="clearHistoryBtn" class="text-xs text-slate-600 dark:text-zinc-300 hover:text-rose-500 px-2.5 py-1.5 min-h-[36px] rounded hover:bg-slate-100 dark:hover:bg-zinc-800 transition cursor-pointer font-semibold">
@@ -1257,7 +1260,7 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2.5 text-[11px]">
       <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2 text-slate-700 dark:text-zinc-300 text-center sm:text-left">
         <img src="/assets/aistudio/image_ffae114f.png" alt="PeerDrop" class="w-6 h-6 rounded-md object-contain bg-slate-950 p-0.5 border border-cyan-500/30 shrink-0" />
-        <span class="font-heading tracking-wide text-xs sm:text-sm whitespace-nowrap shrink-0 brand-title">PeerDrop</span>
+        <span class="font-heading text-xs sm:text-sm whitespace-nowrap shrink-0 brand-title">PeerDrop</span>
         <span class="text-slate-400 dark:text-zinc-600">·</span>
         <span class="font-medium text-slate-600 dark:text-zinc-300">Direct Peer-to-Peer WebRTC Transfer</span>
       </div>
@@ -1307,7 +1310,7 @@
           <img src="/assets/aistudio/image_ffae114f.png" alt="PeerDrop" class="w-8 h-8 rounded-lg object-contain" />
         </div>
         <div class="flex-1">
-          <h3 class="text-sm sm:text-base font-heading tracking-wide">Incoming QuickShare Request</h3>
+          <h3 class="text-xs sm:text-sm font-heading">Incoming QuickShare Request</h3>
           <p class="text-xs text-slate-600 dark:text-zinc-200 mt-0.5 font-medium">
             <strong id="qsConsentSenderName" class="text-slate-900 dark:text-white font-bold">Device</strong> wants to share content with you.
           </p>
@@ -1352,7 +1355,7 @@
         <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-950 border border-cyan-500/30 p-1 flex items-center justify-center mb-1.5 shadow-sm">
           <img src="/assets/aistudio/image_ffae114f.png" alt="PeerDrop" class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg object-contain" />
         </div>
-        <h3 id="qrModalTitle" class="text-sm sm:text-base font-heading tracking-wide uppercase">QuickShare QR Code</h3>
+        <h3 id="qrModalTitle" class="text-xs sm:text-sm font-heading uppercase">QuickShare QR Code</h3>
         <p id="qrModalSubtitle" class="text-xs text-slate-600 dark:text-zinc-200 font-medium">Scan with mobile camera to connect</p>
       </div>
 
@@ -1364,7 +1367,7 @@
       <!-- QuickShare Code Callout Pill (Shown for QuickShare mode) -->
       <div id="qrModalCodePill" class="hidden p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-500/30 text-center">
         <div class="text-[11px] uppercase font-mono text-slate-700 dark:text-zinc-300 font-bold mb-0.5">QuickShare Connection Code</div>
-        <div id="qrModalCodeValue" class="text-2xl sm:text-3xl font-mono font-extrabold tracking-widest text-blue-600 dark:text-blue-400 select-all tabular-nums">------</div>
+        <div id="qrModalCodeValue" class="text-xl sm:text-3xl font-heading tracking-wider text-blue-600 dark:text-blue-400 select-all tabular-nums">------</div>
         <div id="qrModalTimerNotice" class="text-xs font-mono text-slate-600 dark:text-zinc-300 font-medium mt-0.5">Expires in 05:00</div>
       </div>
 
@@ -1394,7 +1397,7 @@
           <img src="/assets/aistudio/image_ffae114f.png" alt="PeerDrop" class="w-8 h-8 rounded-md object-contain" />
         </div>
         <div>
-          <h3 class="text-sm sm:text-base font-heading font-semibold tracking-tight text-slate-900 dark:text-white">Device & Preferences</h3>
+          <h3 class="text-xs sm:text-sm font-heading text-slate-900 dark:text-white">Device &amp; Preferences</h3>
           <p class="text-xs text-slate-600 dark:text-zinc-300 font-medium">Visible name & audio/alert settings</p>
         </div>
       </div>
@@ -1425,7 +1428,7 @@
       <div class="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-zinc-800">
         <div class="flex items-center gap-2.5">
           <img src="/assets/aistudio/image_ffae114f.png" alt="PeerDrop" class="w-7 h-7 rounded-lg object-contain bg-slate-950 p-0.5 border border-cyan-500/30" />
-          <h3 class="text-sm sm:text-base font-heading tracking-wide">How PeerDrop Works</h3>
+          <h3 class="text-xs sm:text-sm font-heading">How PeerDrop Works</h3>
         </div>
         <button id="closeGuideModalBtn" class="text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-white p-2 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer" aria-label="Close guide">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -1433,40 +1436,40 @@
       </div>
       <div class="space-y-2.5 sm:space-y-3 text-xs text-slate-700 dark:text-zinc-200">
         <div class="p-3 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-500/20">
-          <div class="font-bold text-slate-900 dark:text-white mb-1 flex items-center gap-1.5 text-xs sm:text-sm">
+          <div class="font-heading text-slate-900 dark:text-white mb-1 flex items-center gap-1.5 text-[11px] sm:text-xs">
             <span class="w-2 h-2 rounded-full bg-blue-500"></span>
             1. Pure Peer-to-Peer Architecture
           </div>
           <p class="text-xs leading-relaxed text-slate-600 dark:text-zinc-300 font-medium">Unlike cloud storage services, files transferred via PeerDrop never upload to a cloud server or disk. Data is streamed in-flight directly from device RAM to device RAM over encrypted WebRTC DataChannels.</p>
         </div>
         <div class="p-3 rounded-xl bg-slate-50 dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800">
-          <div class="font-bold text-slate-900 dark:text-white mb-1 flex items-center gap-1.5 text-xs sm:text-sm">
+          <div class="font-heading text-slate-900 dark:text-white mb-1 flex items-center gap-1.5 text-[11px] sm:text-xs">
             <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
             2. End-to-End Cryptography
           </div>
           <p class="text-xs leading-relaxed text-slate-600 dark:text-zinc-300 font-medium">All payloads are encrypted with standard DTLS (Datagram Transport Layer Security) and SRTP. Neither third parties nor intermediaries can intercept or tamper with your files.</p>
         </div>
         <div class="p-3 rounded-xl bg-slate-50 dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800">
-          <div class="font-bold text-slate-900 dark:text-white mb-1 flex items-center gap-1.5 text-xs sm:text-sm">
+          <div class="font-heading text-slate-900 dark:text-white mb-1 flex items-center gap-1.5 text-[11px] sm:text-xs">
             <span class="w-2 h-2 rounded-full bg-purple-500"></span>
             3. Flow-Controlled 64KB Chunking
           </div>
           <p class="text-xs leading-relaxed text-slate-600 dark:text-zinc-300 font-medium">Large video files, high-res photos, and deep nested folders are segmented into 64KB chunks with backpressure monitoring (`bufferedAmountLow`) to avoid browser crashes or buffer bloat.</p>
         </div>
         <div class="p-3 rounded-xl bg-slate-50 dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800">
-          <div class="font-bold text-slate-900 dark:text-white mb-1 flex items-center gap-1.5 text-xs sm:text-sm">
+          <div class="font-heading text-slate-900 dark:text-white mb-1 flex items-center gap-1.5 text-[11px] sm:text-xs">
             <span class="w-2 h-2 rounded-full bg-amber-500"></span>
             4. Local Wi-Fi Speed
           </div>
           <p class="text-xs leading-relaxed text-slate-600 dark:text-zinc-300 font-medium">When two devices are connected on the same local Wi-Fi or LAN network, transfers bypass the public internet entirely, transferring at full local wire speeds.</p>
         </div>
         <div class="p-3 rounded-xl bg-slate-50 dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800">
-          <div class="font-bold text-slate-900 dark:text-white mb-1 flex items-center justify-between text-xs sm:text-sm">
+          <div class="font-heading text-slate-900 dark:text-white mb-1 flex items-center justify-between text-[11px] sm:text-xs">
             <div class="flex items-center gap-1.5">
               <span class="w-2 h-2 rounded-full bg-cyan-500"></span>
               5. Background Push Notifications
             </div>
-            <button id="guideTestNotifBtn" class="text-xs font-bold px-2.5 py-1 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 transition cursor-pointer">
+            <button id="guideTestNotifBtn" class="font-sans text-xs font-bold px-2.5 py-1 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 transition cursor-pointer">
               Test Alert
             </button>
           </div>
@@ -1484,7 +1487,7 @@
     <div class="w-20 h-20 rounded-2xl bg-slate-950 border border-cyan-500/40 flex items-center justify-center mb-4 shadow-2xl animate-pulse p-2">
       <img src="/assets/aistudio/image_ffae114f.png" alt="PeerDrop" class="w-14 h-14 rounded-xl object-contain shadow-lg" />
     </div>
-    <h3 class="text-xl sm:text-2xl font-heading tracking-wide mb-1 text-center">Drop Files or Folders Anywhere</h3>
+    <h3 class="text-lg sm:text-2xl font-heading text-white mb-1 text-center">Drop Files or Folders Anywhere</h3>
     <p class="text-xs font-medium text-blue-100 max-w-sm text-center">Release to stage files immediately for secure device transmission.</p>
   </div>
 
@@ -1735,9 +1738,23 @@
     const meshChartAvgKbps = document.getElementById('meshChartAvgKbps');
 
     // ==========================================
-    // AUDIO FEEDBACK SYNTHESIZER (Web Audio API)
+    // SAFE STORAGE & AUDIO FEEDBACK HELPERS
     // ==========================================
-    let soundEnabled = localStorage.getItem('peerdrop_sound') !== 'false';
+    function safeStorageGet(key) {
+      try { return window.localStorage ? window.localStorage.getItem(key) : null; } catch (e) { return null; }
+    }
+    function safeStorageSet(key, val) {
+      try { if (window.localStorage) window.localStorage.setItem(key, val); } catch (e) {}
+    }
+    function safeStorageRemove(key) {
+      try { if (window.localStorage) window.localStorage.removeItem(key); } catch (e) {}
+    }
+    function isIosDevice() {
+      const ua = navigator.userAgent || '';
+      return /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    }
+
+    let soundEnabled = safeStorageGet('peerdrop_sound') !== 'false';
     let audioCtx = null;
 
     function getAudioContext() {
@@ -1819,10 +1836,18 @@
     // ==========================================
     // BROWSER PUSH NOTIFICATIONS ENGINE
     // ==========================================
-    let notificationsEnabled = localStorage.getItem('peerdrop_notifications') !== 'false';
+    let notificationsEnabled = safeStorageGet('peerdrop_notifications') !== 'false';
 
     function isNotificationSupported() {
       return typeof window !== 'undefined' && 'Notification' in window;
+    }
+
+    function showUnsupportedNotificationNotice() {
+      if (isIosDevice()) {
+        showToast('On iPhone/iPad, tap Share → Add to Home Screen to enable push alerts.', 'info');
+      } else {
+        showToast('Push Notifications are not supported in this browser.', 'info');
+      }
     }
 
     function isAppInBackground() {
@@ -1835,13 +1860,13 @@
 
     async function requestNotificationPermission() {
       if (!isNotificationSupported()) {
-        showToast('Push Notifications are not supported in this browser', 'error');
+        showUnsupportedNotificationNotice();
         return false;
       }
 
       if (Notification.permission === 'granted') {
         notificationsEnabled = true;
-        localStorage.setItem('peerdrop_notifications', 'true');
+        safeStorageSet('peerdrop_notifications', 'true');
         updateNotificationUi();
         return true;
       }
@@ -1856,9 +1881,9 @@
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
           notificationsEnabled = true;
-          localStorage.setItem('peerdrop_notifications', 'true');
+          safeStorageSet('peerdrop_notifications', 'true');
           updateNotificationUi();
-          showToast('Desktop push notifications enabled!', 'success');
+          showToast('Push notifications enabled!', 'success');
           playSound('connect');
           return true;
         } else {
@@ -1975,7 +2000,7 @@
     // UTILITIES & DEVICE DETECTION
     // ==========================================
     function getDeviceName() {
-      const saved = localStorage.getItem('peerdrop_device_name');
+      const saved = safeStorageGet('peerdrop_device_name');
       if (saved && saved.trim()) return saved.trim();
 
       const ua = navigator.userAgent;
@@ -2108,7 +2133,7 @@
     // THEME MANAGEMENT (LIGHT & DARK MODE)
     // ==========================================
     function initTheme() {
-      const saved = localStorage.getItem('theme');
+      const saved = safeStorageGet('theme');
       if (saved === 'light') {
         document.documentElement.classList.remove('dark');
         sunIcon.classList.add('hidden');
@@ -2122,7 +2147,7 @@
 
     themeToggleBtn.addEventListener('click', () => {
       const isDark = document.documentElement.classList.toggle('dark');
-      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      safeStorageSet('theme', isDark ? 'dark' : 'light');
       if (isDark) {
         sunIcon.classList.remove('hidden');
         moonIcon.classList.add('hidden');
@@ -2148,15 +2173,15 @@
     function switchMode(mode) {
       currentMode = mode;
       if (mode === 'quickshare') {
-        if (navTabQuickShare) navTabQuickShare.className = 'px-3.5 py-1.5 rounded-md font-bold text-xs transition flex items-center gap-1.5 bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 shadow-sm cursor-pointer';
-        if (navTabDirectMesh) navTabDirectMesh.className = 'px-3.5 py-1.5 rounded-md font-semibold text-xs transition flex items-center gap-1.5 text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white cursor-pointer';
+        if (navTabQuickShare) navTabQuickShare.className = 'px-3.5 py-1.5 rounded-md font-heading text-[11px] transition flex items-center gap-1.5 bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 shadow-sm cursor-pointer';
+        if (navTabDirectMesh) navTabDirectMesh.className = 'px-3.5 py-1.5 rounded-md font-heading text-[11px] transition flex items-center gap-1.5 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 cursor-pointer';
         if (mobileNavQuickShare) mobileNavQuickShare.className = 'flex flex-col items-center justify-center flex-1 h-full py-1 text-blue-600 dark:text-blue-400 cursor-pointer active:scale-95 transition font-bold';
         if (mobileNavDirectMesh) mobileNavDirectMesh.className = 'flex flex-col items-center justify-center flex-1 h-full py-1 text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white cursor-pointer active:scale-95 transition font-semibold';
         viewQuickShare.classList.remove('hidden');
         viewDirectMesh.classList.add('hidden');
       } else {
-        if (navTabDirectMesh) navTabDirectMesh.className = 'px-3.5 py-1.5 rounded-md font-bold text-xs transition flex items-center gap-1.5 bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 shadow-sm cursor-pointer';
-        if (navTabQuickShare) navTabQuickShare.className = 'px-3.5 py-1.5 rounded-md font-semibold text-xs transition flex items-center gap-1.5 text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white cursor-pointer';
+        if (navTabDirectMesh) navTabDirectMesh.className = 'px-3.5 py-1.5 rounded-md font-heading text-[11px] transition flex items-center gap-1.5 bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 shadow-sm cursor-pointer';
+        if (navTabQuickShare) navTabQuickShare.className = 'px-3.5 py-1.5 rounded-md font-heading text-[11px] transition flex items-center gap-1.5 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 cursor-pointer';
         if (mobileNavDirectMesh) mobileNavDirectMesh.className = 'flex flex-col items-center justify-center flex-1 h-full py-1 text-blue-600 dark:text-blue-400 cursor-pointer active:scale-95 transition font-bold';
         if (mobileNavQuickShare) mobileNavQuickShare.className = 'flex flex-col items-center justify-center flex-1 h-full py-1 text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white cursor-pointer active:scale-95 transition font-semibold';
         viewDirectMesh.classList.remove('hidden');
@@ -2189,15 +2214,15 @@
       if (!mobileQsTabShare || !mobileQsTabConnect || !qsDeckCardA || !qsDeckCardB) return;
       playSound('click');
       if (tab === 'share') {
-        mobileQsTabShare.className = 'flex-1 min-h-[44px] py-2 px-2 rounded-lg bg-blue-600 text-white font-bold flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer active:scale-95 whitespace-nowrap';
-        mobileQsTabConnect.className = 'flex-1 min-h-[44px] py-2 px-2 rounded-lg text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-95 whitespace-nowrap';
+        mobileQsTabShare.className = 'flex-1 min-h-[44px] py-2 px-2 rounded-lg bg-white dark:bg-zinc-800 border border-blue-500/40 text-blue-600 dark:text-blue-400 font-heading text-[11px] flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer active:scale-95 whitespace-nowrap';
+        mobileQsTabConnect.className = 'flex-1 min-h-[44px] py-2 px-2 rounded-lg text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white font-heading text-[11px] flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-95 whitespace-nowrap';
         qsDeckCardA.classList.remove('hidden');
         qsDeckCardA.classList.add('flex');
         qsDeckCardB.classList.add('hidden');
         qsDeckCardB.classList.remove('flex');
       } else {
-        mobileQsTabConnect.className = 'flex-1 min-h-[44px] py-2 px-2 rounded-lg bg-emerald-600 text-white font-bold flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer active:scale-95 whitespace-nowrap';
-        mobileQsTabShare.className = 'flex-1 min-h-[44px] py-2 px-2 rounded-lg text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-95 whitespace-nowrap';
+        mobileQsTabConnect.className = 'flex-1 min-h-[44px] py-2 px-2 rounded-lg bg-white dark:bg-zinc-800 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 font-heading text-[11px] flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer active:scale-95 whitespace-nowrap';
+        mobileQsTabShare.className = 'flex-1 min-h-[44px] py-2 px-2 rounded-lg text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white font-heading text-[11px] flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-95 whitespace-nowrap';
         qsDeckCardB.classList.remove('hidden');
         qsDeckCardB.classList.add('flex');
         qsDeckCardA.classList.add('hidden');
@@ -2213,6 +2238,74 @@
     // ==========================================
     // QUICKSHARE CODE CONNECTION ENGINE
     // ==========================================
+    let peerSignalRetryCount = 0;
+
+    function attachPeerLifecycleHandlers(instance, onUnavailableId) {
+      instance.on('open', (id) => {
+        peerSignalRetryCount = 0;
+        myPeerId = id;
+        if (myPeerIdInput) myPeerIdInput.value = id;
+        if (idLoadingSpinner) idLoadingSpinner.classList.add('hidden');
+        updateConnectionStatus('disconnected');
+      });
+
+      instance.on('connection', (conn) => {
+        handleIncomingConnection(conn);
+      });
+
+      instance.on('disconnected', () => {
+        if (!instance.destroyed && document.visibilityState === 'visible') {
+          setTimeout(() => {
+            if (instance && !instance.destroyed && instance.disconnected) {
+              try { instance.reconnect(); } catch (e) {}
+            }
+          }, 1200);
+        }
+      });
+
+      instance.on('error', (err) => {
+        console.warn('PeerJS notice:', err);
+        if (idLoadingSpinner) idLoadingSpinner.classList.add('hidden');
+        if (err.type === 'unavailable-id') {
+          onUnavailableId();
+          return;
+        }
+        if (err.type === 'peer-unavailable') {
+          if (currentMode === 'quickshare') {
+            showToast('Peer code not found or device is offline', 'error');
+            registerFailedAttempt();
+          } else {
+            showToast(`Target node "${remotePeerIdInput.value.trim()}" is offline`, 'error');
+          }
+          updateConnectionStatus('disconnected');
+          sendBackgroundNotification('Peer Unavailable', {
+            body: 'Peer code not found or target device is offline',
+            tag: 'peer-unavailable'
+          });
+          return;
+        }
+        const transientTypes = new Set(['network', 'socket-error', 'socket-closed', 'server-error', 'disconnected']);
+        if (transientTypes.has(err.type) && peerSignalRetryCount < 3) {
+          peerSignalRetryCount++;
+          setTimeout(() => {
+            if (instance && !instance.destroyed) {
+              try {
+                if (instance.disconnected) instance.reconnect();
+                else onUnavailableId();
+              } catch (e) {}
+            }
+          }, 1500 * peerSignalRetryCount);
+          return;
+        }
+        showToast(`Connection notice: ${err.message || err.type}`, 'error');
+        updateConnectionStatus('disconnected');
+        sendBackgroundNotification('Connection Error', {
+          body: `Peer connection issue: ${err.message || err.type}`,
+          tag: 'peer-error'
+        });
+      });
+    }
+
     function setupQuickShareHostCode() {
       if (activeConnection) return;
 
@@ -2224,6 +2317,11 @@
       qsCodeExpiresAt = Date.now() + 5 * 60 * 1000;
       startCodeCountdown();
 
+      if (typeof Peer === 'undefined') {
+        showToast('WebRTC library still loading — please refresh if offline.', 'info');
+        return;
+      }
+
       // Initialize host peer with qs-XXXXXX ID
       if (peer) {
         try { peer.destroy(); } catch (e) {}
@@ -2234,38 +2332,7 @@
         debug: 1
       });
 
-      peer.on('open', (id) => {
-        myPeerId = id;
-        myPeerIdInput.value = id;
-        idLoadingSpinner.classList.add('hidden');
-        updateConnectionStatus('disconnected');
-      });
-
-      peer.on('connection', (conn) => {
-        handleIncomingConnection(conn);
-      });
-
-      peer.on('error', (err) => {
-        console.error('PeerJS error:', err);
-        if (err.type === 'unavailable-id') {
-          setupQuickShareHostCode();
-        } else if (err.type === 'peer-unavailable') {
-          showToast('Peer code not found or device is offline', 'error');
-          registerFailedAttempt();
-          updateConnectionStatus('disconnected');
-          sendBackgroundNotification('Peer Unavailable', {
-            body: 'Peer code not found or target device is offline',
-            tag: 'peer-unavailable'
-          });
-        } else {
-          showToast(`Connection notice: ${err.message || err.type}`, 'error');
-          updateConnectionStatus('disconnected');
-          sendBackgroundNotification('Connection Error', {
-            body: `Peer connection issue: ${err.message || err.type}`,
-            tag: 'peer-error'
-          });
-        }
-      });
+      attachPeerLifecycleHandlers(peer, () => setupQuickShareHostCode());
     }
 
     function startCodeCountdown() {
@@ -3837,7 +3904,7 @@
     // ==========================================
     function loadPersistedHistory() {
       try {
-        const stored = localStorage.getItem('peerdrop_history');
+        const stored = safeStorageGet('peerdrop_history');
         if (stored) {
           const list = JSON.parse(stored);
           if (Array.isArray(list)) {
@@ -3864,7 +3931,7 @@
           timestamp: r.timestamp,
           textContent: r.textContent || null
         }));
-        localStorage.setItem('peerdrop_history', JSON.stringify(serializable));
+        safeStorageSet('peerdrop_history', JSON.stringify(serializable));
       } catch (e) {}
 
       renderHistoryTables();
@@ -3964,7 +4031,7 @@
     if (qsClearHistoryBtn) {
       qsClearHistoryBtn.addEventListener('click', () => {
         transferHistory.length = 0;
-        localStorage.removeItem('peerdrop_history');
+        safeStorageRemove('peerdrop_history');
         renderHistoryTables();
         showToast('Transfer history cleared', 'info');
       });
@@ -3973,7 +4040,7 @@
     if (clearHistoryBtn) {
       clearHistoryBtn.addEventListener('click', () => {
         transferHistory.length = 0;
-        localStorage.removeItem('peerdrop_history');
+        safeStorageRemove('peerdrop_history');
         renderHistoryTables();
         showToast('Transfer ledger cleared', 'info');
       });
@@ -4483,6 +4550,11 @@
     // INITIAL BOOTSTRAP FOR DIRECT MESH
     // ==========================================
     function initPeer(customId = null) {
+      if (typeof Peer === 'undefined') {
+        showToast('WebRTC library still loading — please refresh if offline.', 'info');
+        return;
+      }
+
       if (peer) {
         try { peer.destroy(); } catch (e) {}
       }
@@ -4496,38 +4568,9 @@
         debug: 1
       });
 
-      peer.on('open', (id) => {
-        myPeerId = id;
-        myPeerIdInput.value = id;
-        idLoadingSpinner.classList.add('hidden');
-        updateConnectionStatus('disconnected');
+      attachPeerLifecycleHandlers(peer, () => initPeer());
+      peer.once('open', () => {
         showToast('Direct Node ID active', 'info');
-      });
-
-      peer.on('connection', (conn) => {
-        handleIncomingConnection(conn);
-      });
-
-      peer.on('error', (err) => {
-        console.error('PeerJS error:', err);
-        idLoadingSpinner.classList.add('hidden');
-        if (err.type === 'peer-unavailable') {
-          showToast(`Target node "${remotePeerIdInput.value.trim()}" is offline`, 'error');
-          updateConnectionStatus('disconnected');
-          sendBackgroundNotification('Peer Node Offline', {
-            body: `Target node "${remotePeerIdInput.value.trim()}" is offline or unreachable`,
-            tag: 'peer-unavailable'
-          });
-        } else if (err.type === 'unavailable-id') {
-          initPeer();
-        } else {
-          showToast(`Signal notice: ${err.message || err.type}`, 'error');
-          updateConnectionStatus('disconnected');
-          sendBackgroundNotification('Peer Connection Notice', {
-            body: `Signalling issue: ${err.message || err.type}`,
-            tag: 'peer-error'
-          });
-        }
       });
     }
 
@@ -4574,7 +4617,7 @@
       if (soundToggleBtn) {
         soundToggleBtn.addEventListener('click', () => {
           soundEnabled = !soundEnabled;
-          localStorage.setItem('peerdrop_sound', soundEnabled ? 'true' : 'false');
+          safeStorageSet('peerdrop_sound', soundEnabled ? 'true' : 'false');
           updateSoundUi();
           if (soundEnabled) playSound('click');
           showToast(soundEnabled ? 'Audio feedback enabled' : 'Audio feedback muted', 'info');
@@ -4585,27 +4628,27 @@
       if (notificationToggleBtn) {
         notificationToggleBtn.addEventListener('click', async () => {
           if (!isNotificationSupported()) {
-            showToast('Push Notifications are not supported in this browser', 'error');
+            showUnsupportedNotificationNotice();
             return;
           }
           if (Notification.permission === 'default') {
             const granted = await requestNotificationPermission();
             if (granted) {
               sendBackgroundNotification('PeerDrop Alerts Active', {
-                body: 'You will receive desktop push notifications when files start, finish, or if connection drops.',
+                body: 'You will receive push notifications when files start, finish, or if connection drops.',
                 tag: 'welcome-notification'
               }, true);
             }
           } else if (Notification.permission === 'granted') {
             notificationsEnabled = !notificationsEnabled;
-            localStorage.setItem('peerdrop_notifications', notificationsEnabled ? 'true' : 'false');
+            safeStorageSet('peerdrop_notifications', notificationsEnabled ? 'true' : 'false');
             updateNotificationUi();
             showToast(notificationsEnabled ? 'Background push notifications enabled' : 'Background push notifications muted', 'info');
             if (notificationsEnabled) {
               playSound('click');
             }
           } else if (Notification.permission === 'denied') {
-            showToast('Notifications blocked by browser site permissions. Click the lock icon in your address bar to allow.', 'error');
+            showToast('Notifications blocked by browser site permissions. Allow notifications in site settings.', 'error');
           }
         });
       }
@@ -4622,7 +4665,7 @@
       if (guideTestNotifBtn) {
         guideTestNotifBtn.addEventListener('click', async () => {
           if (!isNotificationSupported()) {
-            showToast('Push Notifications are not supported on this browser', 'error');
+            showUnsupportedNotificationNotice();
             return;
           }
           const granted = await requestNotificationPermission();
@@ -4657,7 +4700,7 @@
           if (!deviceNameCustomInput) return;
           const val = deviceNameCustomInput.value.trim();
           if (val) {
-            localStorage.setItem('peerdrop_device_name', val);
+            safeStorageSet('peerdrop_device_name', val);
             updateDeviceNameUi();
             showToast(`Device name set to "${val}"`, 'success');
             playSound('complete');
@@ -4773,6 +4816,12 @@
         }
       });
     }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && peer && !peer.destroyed && peer.disconnected) {
+        try { peer.reconnect(); } catch (e) {}
+      }
+    });
 
     // ==========================================
     // INITIAL BOOTSTRAP
